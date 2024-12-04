@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/utils/navigator.dart';
 import 'package:mobile_frontend/views/home.dart';
+import 'package:mobile_frontend/views/register.dart'; // Import the register page
 
 class LoginPage extends StatelessWidget {
   @override
@@ -34,6 +35,16 @@ class LoginPage extends StatelessWidget {
                 toNavigate.gotoHome(context);
               },
               child: Text('Login'),
+            ),
+            SizedBox(height: 16.0),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => RegisterPage()),
+                );
+              },
+              child: Text('Register'),
             ),
           ],
         ),
