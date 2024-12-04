@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:mobile_frontend/utils/navigator.dart';
+import 'package:mobile_frontend/utils/permission.dart';
 import 'package:mobile_frontend/widget/balancedgridmenu.dart';
 import 'package:mobile_frontend/widget/largelisttile.dart';
 
@@ -13,32 +15,60 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final Permission permission = Permission();
+  String locationMessage = 'Location not fetched yet';
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
+      backgroundColor: const Color.fromARGB(255, 253, 250, 245),
+      appBar: AppBar(
+        toolbarHeight: MediaQuery.of(context).size.height * 0.12,
+        backgroundColor: Colors.transparent,
+        elevation: 0.0,
+        flexibleSpace: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.zero,
+            bottomRight: Radius.circular(50),
+            topLeft: Radius.zero,
+            topRight: Radius.zero,
+          ),
+          child: Container(
+            color: const Color.fromARGB(255, 221, 199, 237),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 25),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Welcome Muhammad Alif Iskandar,",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Gap(10),
+                  Text(
+                    "Hospital Tracker Application",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 25),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Welcome {User}, to the Hospital Tracker"),
-              const Gap(20),
-              LargeListTile(
-                leading: const Icon(Icons.map),
-                title: const Text('Your Location'),
-                subtitle: const Text('Location Name: {location}'),
-                overline:
-                    const Text('Latitude: {latitude}, Longitude: {longitude}'),
-                onTap: () async {
-                  // aku nak isi permission ability dari smartphone untuk cari longitude latitude.
-                  setState(() {});
-                },
-              ),
-              const Gap(20),
               BalancedGridView(
                 columnCount: 3,
                 children: [
@@ -61,6 +91,34 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const Gap(20),
+              const Text(
+                "Your Current Location: ",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 21),
+              ),
+              const Gap(20),
+              LargeListTile(
+                leading: const Icon(Icons.map),
+                title: const Text('Your Location'),
+                subtitle: const Text('Location Name: {location}'),
+                overline: Text(locationMessage),
+                trailing: CircleAvatar(
+                  backgroundColor: Color.fromARGB(255, 221, 199, 237),
+                  child: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _checkLocationPermission();
+                      });
+                    },
+                    icon: const Icon(Icons.gps_fixed),
+                  ),
+                ),
+              ),
+              const Gap(20),
+              const Text(
+                "Hospital Nearby List: ",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 21),
+              ),
+              const Gap(20),
               LargeListTile(
                 leading: const Icon(Icons.location_city),
                 title: const Text('Hospital Location'),
@@ -74,6 +132,30 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _checkLocationPermission() async {
+    bool hasPermission = await permission.requestPermission();
+
+    if (hasPermission) {
+      var locationData = await permission.getLocation();
+      if (locationData == null) {
+        setState(() {
+          locationMessage =
+              'Latitude: ${locationData?.latitude}, Longitude: ${locationData?.longitude}';
+        });
+      } else {
+        setState(() {
+          locationMessage = 'Unable to fetch location.';
+        });
+      }
+    } else {
+      setState(
+        () {
+          locationMessage = 'Location permission denied.';
+        },
+      );
+    }
   }
 }
 
@@ -109,6 +191,7 @@ class MenuCardSmallTile extends StatelessWidget {
             );
             if (continueLogout == true) {
               // await auth.signOut(context);
+              toNavigate.gotoLogin(context);
             }
           } else {
             Navigator.push(context, MaterialPageRoute(builder: nextScreen));

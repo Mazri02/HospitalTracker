@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/views/home.dart';
+import 'package:mobile_frontend/views/register.dart';
+
+import 'views/login.dart';
 
 void main() {
   runApp(const MyApp());
@@ -32,7 +35,18 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: HomeScreen(),
+      debugShowCheckedModeBanner: false,
+      home: LoginPage(),
+      routes: {
+        //login
+        '/login': (context) => LoginPage(),
+
+        //register
+        '/register': (context) => RegisterPage(),
+
+        //main screen
+        '/home': (context) => const HomeScreen(),
+      },
     );
   }
 }

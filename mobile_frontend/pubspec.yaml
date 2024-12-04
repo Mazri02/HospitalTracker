@@ -37,6 +37,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   im_stepper: ^1.0.1+1
   gap: ^3.0.1
+  location: ^7.0.1
   # shared_preferences: ^2.3.3
 
 dev_dependencies:
