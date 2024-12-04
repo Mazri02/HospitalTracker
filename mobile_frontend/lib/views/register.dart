@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/utils/navigator.dart';
+import 'package:mobile_frontend/views/login.dart';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -84,6 +86,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Processing Data')),
                     );
+
+                    toNavigate.gotoLogin(context);
                   }
                 },
                 child: Text('Register'),

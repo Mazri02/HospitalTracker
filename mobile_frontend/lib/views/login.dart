@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/utils/navigator.dart';
+import 'package:mobile_frontend/views/home.dart';
 
 class LoginPage extends StatelessWidget {
   @override
@@ -29,7 +31,7 @@ class LoginPage extends StatelessWidget {
             SizedBox(height: 16.0),
             ElevatedButton(
               onPressed: () {
-                // Handle login logic here
+                toNavigate.gotoHome(context);
               },
               child: Text('Login'),
             ),
