@@ -4,9 +4,14 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 249, 244, 236),
       appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: const Color.fromARGB(255, 150, 53, 220),
         elevation: 0,
+        title: Text(
+          'Profile Data',
+          style: TextStyle(color: Colors.white),
+        ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
@@ -19,7 +24,7 @@ class ProfilePage extends StatelessWidget {
           // Header Section
           Container(
             decoration: BoxDecoration(
-              color: Colors.deepPurple,
+              color: const Color.fromARGB(255, 150, 53, 220),
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(50),
                 bottomRight: Radius.circular(50),
@@ -34,7 +39,7 @@ class ProfilePage extends StatelessWidget {
                   child: Icon(
                     Icons.person,
                     size: 50,
-                    color: Colors.deepPurple,
+                    color: const Color.fromARGB(255, 150, 53, 220),
                   ),
                 ),
                 SizedBox(height: 10),

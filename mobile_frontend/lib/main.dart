@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/views/home.dart';
-import 'package:mobile_frontend/views/register.dart';
+// import 'package:mobile_frontend/views/register.dart';
 
 import 'views/login.dart';
+import 'views/register.dart';
 
 void main() {
   runApp(const MyApp());
