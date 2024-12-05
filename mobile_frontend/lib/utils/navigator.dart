@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_frontend/views/register.dart';
+
+import '../views/register.dart';
+// import 'package:mobile_frontend/views/register.dart';
 
 class toNavigate {
   static void gotoLogin(BuildContext context) {

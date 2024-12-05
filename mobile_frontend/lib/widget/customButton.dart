@@ -5,14 +5,14 @@ class NextButton extends StatefulWidget {
     super.key,
     this.child,
     required this.valueColor,
-    this.nameButton,
+    required this.nameButton,
     required this.routeName,
   });
 
   final Widget? child;
   final String routeName;
   final int valueColor;
-  final String? nameButton;
+  final String nameButton;
 
   @override
   State<NextButton> createState() => _NextButtonState();
@@ -40,7 +40,7 @@ class _NextButtonState extends State<NextButton> {
         Navigator.pushNamed(context, widget.routeName);
       },
       child: Text(
-        widget.nameButton!.toUpperCase(),
+        widget.nameButton,
         style: const TextStyle(
           fontSize: 14,
           color: Colors.white,
