@@ -1,12 +1,15 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:mobile_frontend/utils/navigator.dart';
 import 'package:mobile_frontend/utils/permission.dart';
+import 'package:mobile_frontend/views/mapsInsert.dart';
 import 'package:mobile_frontend/widget/balancedgridmenu.dart';
 import 'package:mobile_frontend/widget/largelisttile.dart';
-
 import '../widget/yes_no_dialog.dart';
-
+import 'package:latlong2/latlong.dart';
+import 'package:http/http.dart' as http; 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -17,10 +20,70 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final Permission permission = Permission();
   String locationMessage = 'Location not fetched yet';
+  late final token;
 
   @override
   void initState() {
     super.initState();
+  }
+
+  Future<Widget> GetHospital() async {
+    final csrf = await http.get(Uri.parse('http://localhost:8000/csrf-token')); 
+    final WidgetBuilder nextScreens;
+
+    if (csrf.statusCode == 200) { 
+      final data = json.decode(csrf.body); 
+      token = data['csrf_token']; 
+    } else { 
+      throw Exception('Failed to load CSRF token'); 
+    }
+
+    final res = await http.post(
+      Uri.parse('http://localhost:8000/api/ViewAllLocation'),
+      headers: {
+        'Content-Type' : 'application/json; charset=UTF-8',
+        'X-CSRF-TOKEN' : token,
+      },
+    );
+
+    if(res.statusCode == 200){
+      final data = json.decode(res.body);
+      List<Widget> widgets = [];
+
+      for (int i = 0; i < data.length; i++) {
+        widgets.add(
+          LargeListTile(
+            leading: Icon(Icons.location_city),
+            title: Text(data[i]["HospitalAddress"]),
+            subtitle: Text('Hospital Name: '+ data[i]["HospitalName"] +''),
+            overline:
+             Text('Latitude: '+ data[i]["HospitalLang"].toString() +', Longitude: '+ data[i]["HospitalLong"].toString() +''),
+           onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) {
+                      return MapsForm(
+                        hospitalLang: data[i]["HospitalLang"], 
+                        hospitalID: data[i]["LocationID"], 
+                        hospitalLong: data[i]["HospitalLong"], 
+                        hospitalAddress: data[i]["HospitalAddress"], 
+                        hospitalName: data[i]["HospitalName"], 
+                        edit: false,
+                      );
+                    },
+                  ),
+                );
+              },
+
+          )
+        );
+      }
+      
+      return Column( children: widgets );
+    } else {
+      return Center(child: Text("No data available"));
+    }
   }
 
   @override
@@ -80,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   MenuCardSmallTile(
                     imageLink: 'assets/icons/profile.png',
                     label: 'Maps Insert',
-                    nextScreen: (context) => Container(),
+                    nextScreen: (context) => MapsForm(edit: true),
                   ),
                   MenuCardSmallTile(
                     imageLink: 'assets/icons/logout.png',
@@ -119,14 +182,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 21),
               ),
               const Gap(20),
-              LargeListTile(
-                leading: const Icon(Icons.location_city),
-                title: const Text('Hospital Location'),
-                subtitle: const Text('Hospital Name: {location}'),
-                overline:
-                    const Text('Latitude: {latitude}, Longitude: {longitude}'),
-                onTap: () {},
-              ),
+              FutureBuilder(
+                future: GetHospital(), 
+                builder: (BuildContext ctx, AsyncSnapshot snapshot){
+                  if (snapshot.connectionState == ConnectionState.waiting) { 
+                      return CircularProgressIndicator(); // While waiting for the future to complete 
+                    } else if (snapshot.hasError) { 
+                      return Text('Error: ${snapshot.error}'); // If there is an error 
+                    } else { 
+                      return snapshot.data!; // Display the resulting widget 
+                    }
+                }
+              )
             ],
           ),
         ),

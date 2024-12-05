@@ -14,11 +14,13 @@ class Location extends Model {
      *
      * @var array<int, string>
      */
+    protected $table = 'location';
+    protected $primaryKey = 'LocationID';
+    public $incrementing = true;
     protected $fillable = [
         'HospitalName',
         'HospitalLang',
         'HospitalLong',
         'HospitalAddress',
-        'UserID',
     ];
 }

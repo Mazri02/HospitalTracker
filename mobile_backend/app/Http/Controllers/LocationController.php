@@ -6,12 +6,12 @@ use App\Models\Location;
 
 class LocationController {
     public function RegisterLocation(Request $req){
+        print($req);
         $location = new Location();
         $location->HospitalName = $req->HospitalName;
         $location->HospitalLang = $req->HospitalLang;;
         $location->HospitalLong =$req->HospitalLong;
         $location->HospitalAddress =$req->HospitalAddress;
-        $location->UserID =$req->UserID;
         if($location->save()){
             return ([
                 'status' => 200,
@@ -53,7 +53,6 @@ class LocationController {
             'HospitalLang' => $req->HospitalLang,
             'HospitalLong' => $req->HospitalLong,
             'HospitalAddress' => $req->HospitalAddress,
-            'UserID' => $req->UserID
         ]); 
 
         return ([
