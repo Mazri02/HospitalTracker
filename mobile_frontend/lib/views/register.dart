@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/utils/navigator.dart';
 import 'package:mobile_frontend/views/login.dart';
+import 'package:mobile_frontend/widget/customButton.dart';
+
+import '../utils/validator.dart';
+import '../widget/fieldbox.dart';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -18,6 +22,7 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 249, 244, 236),
       appBar: AppBar(
         title: Text('Register New Patient'),
       ),
@@ -27,47 +32,28 @@ class _RegisterPageState extends State<RegisterPage> {
           key: _formKey,
           child: ListView(
             children: <Widget>[
-              TextFormField(
+              FieldBox(
+                label: 'Name',
                 controller: _nameController,
-                decoration: InputDecoration(labelText: 'Name'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  return null;
-                },
+                validator: Validator.validateText,
+                onChanged: (value) {},
               ),
-              TextFormField(
+              FieldBox(
+                label: 'Email',
                 controller: _emailController,
-                decoration: InputDecoration(labelText: 'Email'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                    return 'Please enter a valid email address';
-                  }
-                  return null;
-                },
+                validator: Validator.validateEmailAddress,
+                onChanged: (value) {},
               ),
-              TextFormField(
+              FieldBox(
+                label: 'Password',
                 controller: _passwordController,
-                decoration: InputDecoration(labelText: 'Password'),
+                validator: Validator.validatePassword,
                 obscureText: true,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your password';
-                  }
-                  if (value.length < 6) {
-                    return 'Password must be at least 6 characters long';
-                  }
-                  return null;
-                },
+                onChanged: (value) {},
               ),
-              TextFormField(
+              FieldBox(
+                label: 'Confirm Password',
                 controller: _confirmPasswordController,
-                decoration: InputDecoration(labelText: 'Confirm Password'),
-                obscureText: true,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please confirm your password';
@@ -77,9 +63,11 @@ class _RegisterPageState extends State<RegisterPage> {
                   }
                   return null;
                 },
+                obscureText: true,
+                onChanged: (value) {},
               ),
               SizedBox(height: 20),
-              ElevatedButton(
+              SubmitButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
                     // Process data
@@ -90,7 +78,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     toNavigate.gotoLogin(context);
                   }
                 },
-                child: Text('Register'),
+                text: 'Register',
+                color: Colors.purple,
               ),
             ],
           ),
