@@ -2,12 +2,16 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:mobile_frontend/utils/navigator.dart';
-import 'package:mobile_frontend/utils/permission.dart';
+import 'package:mobile_frontend/views/about/about.dart';
 import 'package:mobile_frontend/views/mapsInsert.dart';
 import 'package:mobile_frontend/views/profile.dart';
+import 'package:mobile_frontend/widget/adbox.dart';
 import 'package:mobile_frontend/widget/balancedgridmenu.dart';
 import 'package:mobile_frontend/widget/largelisttile.dart';
+import '../controller/service.dart';
 import '../widget/yes_no_dialog.dart';
 // import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
@@ -20,13 +24,17 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final Permission permission = Permission();
-  String locationMessage = 'Location not fetched yet';
+  String latitude = "Fetching...";
+  String longitude = "Fetching...";
+  String address = "Fetching address...";
+  final LocationService _locationService = LocationService();
+
   late final token;
 
   @override
   void initState() {
     super.initState();
+    _fetchLocation();
   }
 
   Future<Widget> GetHospital() async {
@@ -142,6 +150,13 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              AdBox(
+                height: 200,
+                width: MediaQuery.of(context).size.width,
+                // height: 200,
+                // width: 450,
+              ),
+              Gap(40),
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
@@ -163,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     MenuCardSmallTile(
                       imageLink: 'assets/icons/aboutproject.png',
                       label: 'About',
-                      nextScreen: (context) => Container(),
+                      nextScreen: (context) => AboutPage(),
                     ),
                     MenuCardSmallTile(
                       imageLink: 'assets/icons/logout.png',
@@ -183,16 +198,21 @@ class _HomeScreenState extends State<HomeScreen> {
               LargeListTile(
                 leading: const Icon(Icons.map),
                 title: const Text('Your Location'),
-                subtitle: const Text('Location Name: {location}'),
-                overline: Text(locationMessage),
+                subtitle: Text(
+                  'Latitude: $latitude , Longitude: $longitude',
+                  style: TextStyle(fontSize: 12),
+                ),
+                bottom: Text(
+                  'Address: $address',
+                  style: TextStyle(fontSize: 12),
+                ),
                 trailing: CircleAvatar(
                   backgroundColor: Color.fromARGB(255, 150, 53, 220),
                   child: IconButton(
                     color: Colors.white,
-                    onPressed: () {
-                      setState(() {
-                        _checkLocationPermission();
-                      });
+                    onPressed: () async {
+                      await _fetchLocation(); // Ensure it's awaited
+                      setState(() {}); // Refresh UI if needed
                     },
                     icon: const Icon(Icons.gps_fixed),
                   ),
@@ -224,27 +244,26 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _checkLocationPermission() async {
-    bool hasPermission = await permission.requestPermission();
+// // Nak dapatkan location address.
+  Future<void> _fetchLocation() async {
+    try {
+      print("Fetching location...");
+      Position position = await _locationService.getCurrentPosition();
+      print("Position: $position");
+      String addr = await _locationService.getAddressFromLatLng(
+          position.latitude, position.longitude);
+      print("Address: $addr");
 
-    if (hasPermission) {
-      var locationData = await permission.getLocation();
-      if (locationData == null) {
-        setState(() {
-          locationMessage =
-              'Latitude: ${locationData?.latitude}, Longitude: ${locationData?.longitude}';
-        });
-      } else {
-        setState(() {
-          locationMessage = 'Unable to fetch location.';
-        });
-      }
-    } else {
-      setState(
-        () {
-          locationMessage = 'Location permission denied.';
-        },
-      );
+      setState(() {
+        latitude = position.latitude.toString();
+        longitude = position.longitude.toString();
+        address = addr;
+      });
+    } catch (e) {
+      print("Error fetching location: $e");
+      setState(() {
+        address = e.toString();
+      });
     }
   }
 }
