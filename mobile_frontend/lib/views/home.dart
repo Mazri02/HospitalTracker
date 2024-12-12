@@ -29,8 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String address = "Fetching address...";
   final LocationService _locationService = LocationService();
 
-  late final token;
-
   @override
   void initState() {
     super.initState();
@@ -40,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<Widget> GetHospital() async {
     final csrf = await http.get(Uri.parse('http://localhost:8000/csrf-token'));
     final WidgetBuilder nextScreens;
+    late final token;
 
     if (csrf.statusCode == 200) {
       final data = json.decode(csrf.body);
