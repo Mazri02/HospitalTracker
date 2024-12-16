@@ -17,7 +17,7 @@ https://github.com/Pian0610
 Displays basic user information upon successful login.
 
 **<br>Basic Map Integration:</br>**
-Utilizes a mapping library (e.g., Google Maps, Mapbox) to display a basic map of the user's current location.
+Utilizes a mapping library (e.g., Open Streets Maps, Mapbox) to display a basic map of the user's current location.
 
 **<br>Location Tracking:</br>**
 Accurately determines and displays the user's current location (longitude and latitude).
