@@ -28,8 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String longitude = "Fetching...";
   String address = "Fetching address...";
   final LocationService _locationService = LocationService();
-
-  late final token;
+  late final ipAddress = 'http://192.168.1.165:8000';
 
   @override
   void initState() {
@@ -38,18 +37,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<Widget> GetHospital() async {
-    final csrf = await http.get(Uri.parse('http://localhost:8000/csrf-token'));
+    final csrf = await http.get(Uri.parse(ipAddress + '/csrf-token'));
     final WidgetBuilder nextScreens;
+    late final token;
 
     if (csrf.statusCode == 200) {
       final data = json.decode(csrf.body);
       token = data['csrf_token'];
     } else {
-      throw Exception('Failed to load CSRF token');
+      throw Exception(json.decode(csrf.body));
     }
 
     final res = await http.post(
-      Uri.parse('http://localhost:8000/api/ViewAllLocation'),
+      Uri.parse(ipAddress + '/api/ViewAllLocation'),
       headers: {
         'Content-Type': 'application/json; charset=UTF-8',
         'X-CSRF-TOKEN': token,

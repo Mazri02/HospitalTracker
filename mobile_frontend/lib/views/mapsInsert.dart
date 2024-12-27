@@ -33,6 +33,7 @@ class MapsFormState extends State<MapsForm> {
   late final TextEditingController LocationController = TextEditingController();
   late final TextEditingController NameController = TextEditingController();
   final MapController _mapController = MapController();
+  late final ipAddress = 'http://192.168.1.165:8000';
 
   Future<void> fetchLocation(String query) async {
     final String url =
@@ -68,21 +69,21 @@ class MapsFormState extends State<MapsForm> {
   }
 
   void DeleteInformation() async {
-    final token;
+    late final tokenDelete;
     final display = await getDisplayName(_center);
-    final csrf = await http.get(Uri.parse('http://localhost:8000/csrf-token'));
+    final csrf = await http.get(Uri.parse(ipAddress + '/csrf-token'));
     if (csrf.statusCode == 200) {
       final data = json.decode(csrf.body);
-      token = data['csrf_token'];
+      tokenDelete = data['csrf_token'];
     } else {
       throw Exception('Failed to load CSRF token');
     }
 
     final res =
-        await http.post(Uri.parse('http://localhost:8000/api/DeleteLocation'),
+        await http.post(Uri.parse(ipAddress + '/api/DeleteLocation'),
             headers: {
               'Content-Type': 'application/json; charset=UTF-8',
-              'X-CSRF-TOKEN': token,
+              'X-CSRF-TOKEN': tokenDelete,
             },
             body: jsonEncode({'LocationID': widget.hospitalID}));
 
@@ -98,6 +99,7 @@ class MapsFormState extends State<MapsForm> {
       print("Status Code: ${res.statusCode}");
       // print("Response Body: ${res.body}");
       print("Headers: ${res.headers}");
+      print("Body: ${res.body}");
       print("Request URL: ${res.request?.url}");
       print("Something wrong, Please Try Again");
     }
@@ -149,21 +151,21 @@ class MapsFormState extends State<MapsForm> {
   }
 
   void StoreInformation() async {
-    final token;
+    late final tokenStore;
     final display = await getDisplayName(_center);
-    final csrf = await http.get(Uri.parse('http://localhost:8000/csrf-token'));
+    final csrf = await http.get(Uri.parse(ipAddress + '/csrf-token'));
     if (csrf.statusCode == 200) {
       final data = json.decode(csrf.body);
-      token = data['csrf_token'];
+      tokenStore = data['csrf_token'];
     } else {
       throw Exception('Failed to load CSRF token');
     }
 
     final res =
-        await http.post(Uri.parse('http://localhost:8000/api/RegisterLocation'),
+        await http.post(Uri.parse(ipAddress + '/api/RegisterLocation'),
             headers: {
               'Content-Type': 'application/json; charset=UTF-8',
-              'X-CSRF-TOKEN': token,
+              'X-CSRF-TOKEN': tokenStore,
             },
             body: jsonEncode({
               'HospitalLang': _center.latitude,
@@ -182,7 +184,7 @@ class MapsFormState extends State<MapsForm> {
       );
     } else {
       print("Status Code: ${res.statusCode}");
-      // print("Response Body: ${res.body}");
+      print("Response Body: ${res.body}");
       print("Headers: ${res.headers}");
       print("Request URL: ${res.request?.url}");
       print("Something wrong, Please Try Again");
