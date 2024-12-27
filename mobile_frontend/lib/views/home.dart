@@ -28,7 +28,10 @@ class _HomeScreenState extends State<HomeScreen> {
   String longitude = "Fetching...";
   String address = "Fetching address...";
   final LocationService _locationService = LocationService();
+<<<<<<< HEAD
   late final ipAddress = 'http://192.168.1.165:8000';
+=======
+>>>>>>> 45b80fbafd763097b03f564b696b322cce2b8284
 
   @override
   void initState() {
