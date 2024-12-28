@@ -103,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 249, 244, 236),
       appBar: AppBar(
-        toolbarHeight: MediaQuery.of(context).size.height * 0.15,
+        toolbarHeight: MediaQuery.of(context).size.height * 0.20,
         backgroundColor: const Color.fromARGB(255, 249, 244, 236),
         elevation: 0.0,
         flexibleSpace: ClipRRect(
