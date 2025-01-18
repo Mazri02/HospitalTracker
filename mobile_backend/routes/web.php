@@ -13,8 +13,8 @@ Route::get('/csrf-token', function (Request $request) {
     return response()->json(['csrf_token' => csrf_token()]);
 });
 
-Route::post('api/RegisterUser', [UserController::class,"RegisterUser"]);
-Route::post('api/CheckUser', [UserController::class,"CheckUser"]);
+Route::get('api/RegisterUser', [UserController::class,"RegisterUser"]);
+Route::get('api/CheckUser', [UserController::class,"CheckUser"]);
 Route::post('api/DeleteUser', [UserController::class,"DeleteUser"]);
 Route::post('api/EditUser', [UserController::class,"EditUser"]);
 

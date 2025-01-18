@@ -14,7 +14,7 @@ class Kernel extends HttpKernel
      * @var array
      */
     protected $middleware = [
-        \App\Http\Middleware\CorsMiddleware::class,
+        \Illuminate\Http\Middleware\HandleCors::class,
         // Other middleware...
     ];
 
