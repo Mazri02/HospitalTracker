@@ -20,7 +20,7 @@ Route::middleware([CorsMiddleware::class])->group(function () {
         return response()->json(['csrf_token' => csrf_token()]);
     });
 
-    //Route::get('api/RegisterUser', [UserController::class, 'RegisterUser']);
+    Route::get('api/RegisterUser', [UserController::class, 'RegisterUser']);
     Route::get('api/CheckUser', [UserController::class, 'CheckUser']);
     Route::get('api/DeleteUser', [UserController::class, 'DeleteUser']);
     Route::get('api/EditUser', [UserController::class, 'EditUser']);

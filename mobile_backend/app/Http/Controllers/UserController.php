@@ -6,42 +6,50 @@ use Illuminate\Http\Request;
 
 class UserController {
     public function RegisterUser(Request $req) {
+        $req->validate([
+            'UserEmail' => 'required|email|unique:users',
+            'UserPassword' => 'required|min:6',
+            'UserName' => 'required',
+        ]);
+
         $users = new Users();
-        $users->UserEmail = $req->UserEmail;
-        $users->UserPassword = hash("sha256",$req->UserPassword);
-        $users->UserName =$req->UserName;
+        $users->UserEmail = $req->query('UserEmail');
+        $users->UserPassword = hash("sha256", $req->query('UserPassword'));
+        $users->UserName = $req->query('UserName');
 
         if($users->save()){
-            return ([
+            return response()->json([
                 'status' => 200,
                 'data' => "Data Inserted Successfully"
             ]);
         }
 
-        return ([
+        return response()->json([
             'status' => 401,
             "error" => "Something wrong, Please Try Again"
         ]);
     }
 
     public function CheckUser(Request $req) {
-        if(Users::where("UserEmail",$req->UserEmail)->get()) {
-            if(Users::where("UserPassword",hash("sha256",$req->UserPassword))->get()){
-                return ([
-                    "status" => 200,
-                    "data" => Users::where("UserPassword",hash("sha256",$req->UserPassword))->get()
-                ]);
-            }
-
-            return ([
-                "status" => 403,
-                "error" => "Not Authorized, Wrong Password" 
+        $user = Users::where("UserEmail", $req->query('UserEmail'))->first();
+        
+        if(!$user) {
+            return response()->json([
+                "status" => 402,
+                "error" => "Not Authorized, Wrong Email" 
             ]);
         }
 
-        return ([
-            "status" => 402,
-            "error" => "Not Authorized, Wrong Email" 
+        if($user->UserPassword === hash("sha256", $req->query('UserPassword'))) {
+            return response()->json([
+                "status" => 200,
+                "data" => $user
+            ]);
+        }
+
+        return response()->json([
+            "status" => 403,
+            "error" => "Not Authorized, Wrong Password" 
         ]);
     }
     
