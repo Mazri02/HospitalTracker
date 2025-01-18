@@ -14,7 +14,7 @@ import 'package:mobile_frontend/widget/largelisttile.dart';
 import '../controller/service.dart';
 import '../widget/yes_no_dialog.dart';
 // import 'package:latlong2/latlong.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String longitude = "Fetching...";
   String address = "Fetching address...";
   final LocationService _locationService = LocationService();
+  final ipAddress = 'http://10.82.187.196:8000'; // Tukar IP Sendiri Time Present
 
   @override
   void initState() {
@@ -36,27 +37,34 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<Widget> GetHospital() async {
-    final csrf = await http.get(Uri.parse('http://localhost:8000/csrf-token'));
-    final WidgetBuilder nextScreens;
-    late final token;
+    final response = await Dio().get(
+      ipAddress + '/csrf-token',
+      options: Options(headers: {
+        'withCredentials': 'true',
+      }),
+    );
 
-    if (csrf.statusCode == 200) {
-      final data = json.decode(csrf.body);
+    final WidgetBuilder nextScreens;
+    var token;
+
+    if (response.statusCode == 200) {
+      var data = response.data;
       token = data['csrf_token'];
     } else {
       throw Exception('Failed to load CSRF token');
     }
 
-    final res = await http.post(
-      Uri.parse('http://localhost:8000/api/ViewAllLocation'),
-      headers: {
+    final res = await Dio().get(
+      ipAddress + '/api/ViewAllLocation',
+      options: Options(headers: {
         'Content-Type': 'application/json; charset=UTF-8',
         'X-CSRF-TOKEN': token,
-      },
+        'Accept': 'application/json',
+      }),
     );
 
     if (res.statusCode == 200) {
-      final data = json.decode(res.body);
+      final data = res.data;
       List<Widget> widgets = [];
 
       for (int i = 0; i < data.length; i++) {
@@ -64,12 +72,11 @@ class _HomeScreenState extends State<HomeScreen> {
           LargeListTile(
             leading: Icon(Icons.location_city),
             title: Text(data[i]["HospitalAddress"]),
-            subtitle: Text('Hospital Name: ' + data[i]["HospitalName"] + ''),
+            subtitle: Text('Hospital Name: ' + data[i]["HospitalName"]),
             overline: Text('Latitude: ' +
                 data[i]["HospitalLang"].toString() +
                 ', Longitude: ' +
-                data[i]["HospitalLong"].toString() +
-                ''),
+                data[i]["HospitalLong"].toString()),
             onTap: () {
               Navigator.push(
                 context,
@@ -103,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 249, 244, 236),
       appBar: AppBar(
-        toolbarHeight: MediaQuery.of(context).size.height * 0.15,
+        toolbarHeight: MediaQuery.of(context).size.height * 0.20,
         backgroundColor: const Color.fromARGB(255, 249, 244, 236),
         elevation: 0.0,
         flexibleSpace: ClipRRect(
@@ -242,8 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-// // Nak dapatkan location address.
+  
   Future<void> _fetchLocation() async {
     try {
       print("Fetching location...");

@@ -99,6 +99,11 @@ class _CreditsState extends State<Credits> {
                 Text('Muhd Suffian Bin Mahathir'),
                 Text('M3CDCS2515C'),
                 Text('2023473736'),
+                Gap(10),
+                Text(
+                  'Credits, Our Repository and Learn More Project: https://github.com/Mazri02/HospitalTracker ',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
           ),
