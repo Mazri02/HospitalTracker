@@ -7,7 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 
-URL::forceScheme('https');
+// Remove or comment out this line
+// URL::forceScheme('https');
 
 Route::get('/', function () {
     return view('welcome');
@@ -24,10 +25,12 @@ Route::middleware([CorsMiddleware::class])->group(function () {
     Route::get('api/CheckUser', [UserController::class, 'CheckUser']);
     Route::get('api/DeleteUser', [UserController::class, 'DeleteUser']);
     Route::get('api/EditUser', [UserController::class, 'EditUser']);
-
+    Route::get('api/GetUserData', [UserController::class, 'GetUserData']);
+    
     Route::get('api/ViewAllLocation', [LocationController::class, 'ViewAllLocation']);
     Route::get('api/ViewLocationByID', [LocationController::class, 'ViewLocationByID']);
     Route::get('api/RegisterLocation', [LocationController::class, 'RegisterLocation']);
     Route::get('api/DeleteLocation', [LocationController::class, 'DeleteLocation']);
     Route::get('api/updateLocation', [LocationController::class, 'updateLocation']);
+
 });

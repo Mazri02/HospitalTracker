@@ -13,43 +13,53 @@ class UserController {
         ]);
 
         $users = new Users();
-        $users->UserEmail = $req->query('UserEmail');
-        $users->UserPassword = hash("sha256", $req->query('UserPassword'));
-        $users->UserName = $req->query('UserName');
+        $users->UserEmail = strtolower($req->get('UserEmail'));
+        $users->UserPassword = hash("sha256", $req->get('UserPassword'));
+        $users->UserName = $req->get('UserName');
 
         if($users->save()){
             return response()->json([
                 'status' => 200,
-                'data' => "Data Inserted Successfully"
+                'message' => "Registration successful",
+                'data' => [
+                    'UserID' => $users->UserID,
+                    'UserName' => $users->UserName,
+                    'UserEmail' => $users->UserEmail
+                ]
             ]);
         }
 
         return response()->json([
             'status' => 401,
-            "error" => "Something wrong, Please Try Again"
+            "error" => "Registration failed, please try again"
         ]);
     }
 
     public function CheckUser(Request $req) {
-        $user = Users::where("UserEmail", $req->query('UserEmail'))->first();
+        $user = Users::where("UserEmail", strtolower($req->get('UserEmail')))->first();
         
         if(!$user) {
             return response()->json([
                 "status" => 402,
-                "error" => "Not Authorized, Wrong Email" 
+                "error" => "Email not found" 
             ]);
         }
 
-        if($user->UserPassword === hash("sha256", $req->query('UserPassword'))) {
+        if($user->UserPassword === hash("sha256", $req->get('UserPassword'))) {
             return response()->json([
                 "status" => 200,
-                "data" => $user
+                "message" => "Login successful",
+                "data" => [
+                    'UserID' => $user->UserID,
+                    'UserName' => $user->UserName,
+                    'UserEmail' => $user->UserEmail
+                ]
             ]);
         }
 
         return response()->json([
             "status" => 403,
-            "error" => "Not Authorized, Wrong Password" 
+            "error" => "Invalid password" 
         ]);
     }
     
@@ -68,15 +78,65 @@ class UserController {
     }
 
     public function EditUser(Request $req) {
-        Users::where('UserID',$req->UserID)->update([
-            'UserEmail' => $req -> UserEmail,
-            'UserPassword' => $req -> hash("sha256",$req->UserPassword),
-            'UserName' => $req->UserName,
-        ]); 
+        try {
+            $updateData = [
+                'UserEmail' => $req->UserEmail,
+                'UserName' => $req->UserName,
+            ];
 
-        return ([
-            "status" => 200,
-            "data" => "Data updated successfully"
-        ]);
+            // Only update password if it's provided
+            if ($req->has('UserPassword')) {
+                $updateData['UserPassword'] = hash("sha256", $req->UserPassword);
+            }
+
+            Users::where('UserID', $req->UserID)->update($updateData);
+
+            return response()->json([
+                "status" => 200,
+                "data" => "Data updated successfully"
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                "status" => 500,
+                "error" => "Server error: " . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function GetUserData(Request $req) {
+        try {
+            $userId = $req->get('UserID');
+            
+            if (!$userId) {
+                return response()->json([
+                    "status" => 400,
+                    "error" => "UserID is required"
+                ]);
+            }
+
+            $user = Users::where("UserID", $userId)->first();
+            
+            if(!$user) {
+                return response()->json([
+                    "status" => 404,
+                    "error" => "User not found"
+                ]);
+            }
+
+            return response()->json([
+                "status" => 200,
+                "data" => [
+                    'UserID' => $user->UserID,
+                    'UserName' => $user->UserName,
+                    'UserEmail' => $user->UserEmail
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('GetUserData error: ' . $e->getMessage());
+            return response()->json([
+                "status" => 500,
+                "error" => "Server error: " . $e->getMessage()
+            ]);
+        }
     }
 }
