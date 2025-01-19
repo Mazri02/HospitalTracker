@@ -15,9 +15,15 @@ import '../controller/service.dart';
 import '../widget/yes_no_dialog.dart';
 // import 'package:latlong2/latlong.dart';
 import 'package:dio/dio.dart';
+import 'package:mobile_frontend/views/login.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final Map<String, dynamic> userData;
+  
+  const HomeScreen({
+    super.key,
+    required this.userData,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -105,6 +111,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _handleLogout() async {
+    final continueLogout = await showYesNoDialog(
+      context: context,
+      title: 'Log out',
+      message: 'Are you sure you want to logout?',
+    );
+    
+    if (continueLogout == true) {
+      // Use the navigation utility instead
+      toNavigate.gotoLogin(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,37 +132,88 @@ class _HomeScreenState extends State<HomeScreen> {
         toolbarHeight: MediaQuery.of(context).size.height * 0.20,
         backgroundColor: const Color.fromARGB(255, 249, 244, 236),
         elevation: 0.0,
-        flexibleSpace: ClipRRect(
-          borderRadius: const BorderRadius.only(
-            bottomLeft: Radius.zero,
-            bottomRight: Radius.circular(50),
-            topLeft: Radius.zero,
-            topRight: Radius.zero,
-          ),
-          child: Container(
-            color: const Color.fromARGB(255, 150, 53, 220),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 25),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Welcome {Username},",
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  Gap(10),
-                  Text(
-                    "Hospital Tracker Application",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 25,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 20.0, top: 10.0),
+            child: IconButton(
+              icon: Icon(
+                Icons.logout_rounded,
+                color: Colors.white,
+                size: 28,
               ),
+              onPressed: _handleLogout,
+            ),
+          ),
+        ],
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(255, 150, 53, 220),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                spreadRadius: 2,
+                blurRadius: 7,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: MediaQuery.of(context).padding.top + 20,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Welcome,",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      "${widget.userData['UserName'] ?? 'User'}",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 20),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.local_hospital,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        "Hospital Tracker Application",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -174,23 +244,40 @@ class _HomeScreenState extends State<HomeScreen> {
                     MenuCardSmallTile(
                       imageLink: 'assets/icons/profile.png',
                       label: 'Profile',
-                      nextScreen: (context) => ProfilePage(),
+                      builder: (context) => ProfilePage(userData: widget.userData),
+                      onTap: () async {
+                        // Wait for result from ProfilePage
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ProfilePage(userData: widget.userData),
+                          ),
+                        );
+                        
+                        // Update userData if profile was edited
+                        if (result != null && mounted) {
+                          setState(() {
+                            widget.userData['UserName'] = result['UserName'];
+                            widget.userData['UserEmail'] = result['UserEmail'];
+                          });
+                        }
+                      },
                     ),
                     MenuCardSmallTile(
                       imageLink: 'assets/icons/mapinsert.png',
                       label: 'Maps Insert',
-                      nextScreen: (context) => MapsForm(edit: true),
+                      builder: (context) => MapsForm(edit: true),
                     ),
                     MenuCardSmallTile(
                       imageLink: 'assets/icons/aboutproject.png',
                       label: 'About',
-                      nextScreen: (context) => AboutPage(),
+                      builder: (context) => AboutPage(),
                     ),
                     MenuCardSmallTile(
                       imageLink: 'assets/icons/logout.png',
                       label: 'Logout',
-                      nextScreen: (context) => Container(),
-                      logout: true,
+                      builder: (context) => Container(),
+                      onTap: _handleLogout,
                     ),
                   ],
                 ),
@@ -278,16 +365,16 @@ class MenuCardSmallTile extends StatelessWidget {
     Key? key,
     required this.imageLink,
     required this.label,
-    required this.nextScreen,
-    this.logout = false,
+    required this.builder,
+    this.onTap,
     this.backgroundColor = Colors.transparent,
   }) : super(key: key);
 
   final String imageLink;
   final String label;
-  final WidgetBuilder nextScreen;
+  final WidgetBuilder builder;
+  final VoidCallback? onTap;
   final Color? backgroundColor;
-  final bool? logout;
 
   @override
   Widget build(BuildContext context) {
@@ -296,21 +383,7 @@ class MenuCardSmallTile extends StatelessWidget {
     return Material(
       color: backgroundColor,
       child: InkWell(
-        onTap: () async {
-          if (logout == true) {
-            final continueLogout = await showYesNoDialog(
-              context: context,
-              title: 'Log out',
-              message: 'Are you sure you want to logout?',
-            );
-            if (continueLogout == true) {
-              // await auth.signOut(context);
-              toNavigate.gotoLogin(context);
-            }
-          } else {
-            Navigator.push(context, MaterialPageRoute(builder: nextScreen));
-          }
-        },
+        onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 0),
           child: Column(
