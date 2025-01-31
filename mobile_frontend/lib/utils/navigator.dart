@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/views/about/acknowledgement.dart';
+import 'package:mobile_frontend/views/home.dart';
 
 import '../views/about/credits.dart';
 import '../views/about/termsAndService.dart';
@@ -11,8 +12,13 @@ class toNavigate {
     Navigator.pushReplacementNamed(context, "/login");
   }
 
-  static void gotoHome(BuildContext context) {
-    Navigator.pushReplacementNamed(context, "/home");
+  static void gotoHome(BuildContext context, Map<String, dynamic> userData) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(userData: userData),
+      ),
+    );
   }
 
   static void gotoRegister(BuildContext context) {

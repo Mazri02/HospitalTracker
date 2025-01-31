@@ -1,0 +1,2 @@
+C:/laragon/www/HospitalTracker/mobile_frontend/android/app/.cxx/Debug/136p1n1r/x86/CMakeFiles/edit_cache.dir
+C:/laragon/www/HospitalTracker/mobile_frontend/android/app/.cxx/Debug/136p1n1r/x86/CMakeFiles/rebuild_cache.dir

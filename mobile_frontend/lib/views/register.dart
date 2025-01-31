@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/utils/navigator.dart';
-import 'package:mobile_frontend/views/login.dart';
 import 'package:mobile_frontend/widget/customButton.dart';
-
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../utils/validator.dart';
 import '../widget/fieldbox.dart';
+import 'package:mobile_frontend/services/api_service.dart';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -13,11 +14,39 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _apiService = ApiService();
+  bool _isLoading = false;
+
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await _apiService.register(
+        name: _nameController.text,
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+
+      if (response['status'] == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response['message'] ?? 'Registration successful')),
+        );
+        toNavigate.gotoLogin(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response['error'] ?? 'Registration failed')),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +66,18 @@ class _RegisterPageState extends State<RegisterPage> {
                 controller: _nameController,
                 validator: Validator.validateText,
                 onChanged: (value) {},
+                textCapitalization: TextCapitalization.words,
               ),
+              SizedBox(height: 20),
               FieldBox(
                 label: 'Email',
                 controller: _emailController,
                 validator: Validator.validateEmailAddress,
                 onChanged: (value) {},
+                textCapitalization: TextCapitalization.none,
+                keyboardType: TextInputType.emailAddress,
               ),
+              SizedBox(height: 20),
               FieldBox(
                 label: 'Password',
                 controller: _passwordController,
@@ -51,6 +85,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 obscureText: true,
                 onChanged: (value) {},
               ),
+              SizedBox(height: 20),
               FieldBox(
                 label: 'Confirm Password',
                 controller: _confirmPasswordController,
@@ -66,21 +101,14 @@ class _RegisterPageState extends State<RegisterPage> {
                 obscureText: true,
                 onChanged: (value) {},
               ),
-              SizedBox(height: 20),
-              SubmitButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    // Process data
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Processing Data')),
-                    );
-
-                    toNavigate.gotoLogin(context);
-                  }
-                },
-                text: 'Register',
-                color: Colors.purple,
-              ),
+              SizedBox(height: 40),
+              _isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : SubmitButton(
+                      onPressed: _register,
+                      text: 'Register',
+                      color: Colors.purple,
+                    ),
             ],
           ),
         ),

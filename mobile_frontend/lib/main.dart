@@ -46,7 +46,7 @@ class MyApp extends StatelessWidget {
         '/register': (context) => RegisterPage(),
 
         //main screen
-        '/home': (context) => const HomeScreen(),
+        '/home': (context) => HomeScreen(userData: {}),
       },
     );
   }

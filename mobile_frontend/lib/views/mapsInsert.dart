@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:mobile_frontend/widget/yes_no_dialog.dart';
 // import 'package:nominatim_flutter/nominatim_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class MapsForm extends StatefulWidget {
@@ -33,33 +34,33 @@ class MapsFormState extends State<MapsForm> {
   late final TextEditingController LocationController = TextEditingController();
   late final TextEditingController NameController = TextEditingController();
   final MapController _mapController = MapController();
+  final ipAddress = 'http://10.82.187.196:8000'; // Tukar IP Sendiri Time Present
 
   Future<void> fetchLocation(String query) async {
-    final String url =
-        'https://nominatim.openstreetmap.org/search?q=$query&format=json';
-    final response = await http.get(Uri.parse(url));
+    final String url = 'https://nominatim.openstreetmap.org/search?q=$query&format=json';
+    final response = await Dio().get(url);
 
     if (response.statusCode == 200) {
-      final List data = json.decode(response.body);
-      if (!data.isEmpty) {
+      final List data = response.data;
+      if (data.isNotEmpty) {
         setState(() {
-          _center = LatLng(
-              double.parse(data[0]["lat"]), double.parse(data[0]["lon"]));
+          _center = LatLng(double.parse(data[0]["lat"]), double.parse(data[0]["lon"]));
           LocationController.text = data[0]["display_name"];
           _mapController.move(_center, 16.0);
 
           _markers.clear();
           _markers.add(Marker(
-              width: 80.0,
-              height: 80.0,
-              point: _center,
-              builder: (ctx) => Container(
-                    child: Icon(
-                      Icons.location_on,
-                      color: Colors.red,
-                      size: 40.0,
-                    ),
-                  )));
+            width: 80.0,
+            height: 80.0,
+            point: _center,
+            builder: (ctx) => Container(
+              child: Icon(
+                Icons.location_on,
+                color: Colors.red,
+                size: 40.0,
+              ),
+            ),
+          ));
 
           print(_center);
         });
@@ -68,38 +69,49 @@ class MapsFormState extends State<MapsForm> {
   }
 
   void DeleteInformation() async {
-    final token;
-    final display = await getDisplayName(_center);
-    final csrf = await http.get(Uri.parse('http://localhost:8000/csrf-token'));
-    if (csrf.statusCode == 200) {
-      final data = json.decode(csrf.body);
+    final String token;
+    try {
+      // Get CSRF token
+      final response = await Dio().get(
+        ipAddress + '/csrf-token',
+        options: Options(extra: {
+          'withCredentials': true,
+        }),
+      );
+
+    if (response.statusCode == 200) {
+      final data = response.data;
       token = data['csrf_token'];
     } else {
       throw Exception('Failed to load CSRF token');
     }
 
-    final res =
-        await http.post(Uri.parse('http://localhost:8000/api/DeleteLocation'),
-            headers: {
-              'Content-Type': 'application/json; charset=UTF-8',
-              'X-CSRF-TOKEN': token,
-            },
-            body: jsonEncode({'LocationID': widget.hospitalID}));
-
-    if (res.statusCode == 200) {
-      showYesNoDialog(
-        context: context,
-        title: "Location has been deleted",
-        message:
-            "The selected location has been deleted, Please Return to the Home Page",
-        positiveButton: "Close",
+      // Make DELETE request with CSRF token
+      final res = await Dio().get(
+        ipAddress + '/api/DeleteLocation?LocationID=' + widget.hospitalID.toString(),
+        options: Options(headers: {
+          'Content-Type': 'application/json; charset=UTF-8',
+          'X-CSRF-TOKEN' : token,
+        },
+        extra: {
+          'withCredentials': true,
+        })
       );
-    } else {
-      print("Status Code: ${res.statusCode}");
-      // print("Response Body: ${res.body}");
-      print("Headers: ${res.headers}");
-      print("Request URL: ${res.request?.url}");
-      print("Something wrong, Please Try Again");
+
+      if (res.statusCode == 200) {
+        showYesNoDialog(
+          context: context,
+          title: "Location has been deleted",
+          message: "The selected location has been deleted, Please Return to the Home Page",
+          positiveButton: "Close",
+        );
+      } else {
+        print("Status Code: ${res.statusCode}");
+        print("Headers: ${res.headers}");
+        print("Something wrong, Please Try Again");
+      }
+    } catch (e) {
+      print('Error: $e');
     }
   }
 
@@ -108,10 +120,10 @@ class MapsFormState extends State<MapsForm> {
         'https://nominatim.openstreetmap.org/reverse?format=json&lat=${point.latitude}&lon=${point.longitude}&zoom=18&addressdetails=1';
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await Dio().get(url);
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
+        final Map<String, dynamic> data = response.data;
         if (data.containsKey('display_name')) {
           print(data['display_name']);
           return data['display_name'];
@@ -133,58 +145,62 @@ class MapsFormState extends State<MapsForm> {
       _mapController.move(_center, 16.0);
       _markers.clear();
       _markers.add(Marker(
-          width: 80.0,
-          height: 80.0,
-          point: _center,
-          builder: (ctx) => Container(
-                child: Icon(
-                  Icons.location_on,
-                  color: Colors.red,
-                  size: 40.0,
-                ),
-              )));
-
-      print(_center);
+        width: 80.0,
+        height: 80.0,
+        point: _center,
+        builder: (ctx) => Container(
+          child: Icon(
+            Icons.location_on,
+            color: Colors.red,
+            size: 40.0,
+          ),
+        ),
+      ));
     });
   }
 
   void StoreInformation() async {
-    final token;
-    final display = await getDisplayName(_center);
-    final csrf = await http.get(Uri.parse('http://localhost:8000/csrf-token'));
-    if (csrf.statusCode == 200) {
-      final data = json.decode(csrf.body);
+    final String token;
+    final String display = await getDisplayName(_center);
+    final response = await Dio().get(
+      ipAddress + '/csrf-token',
+      options: Options(extra: {
+        'withCredentials': true,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = response.data;
       token = data['csrf_token'];
     } else {
       throw Exception('Failed to load CSRF token');
     }
 
-    final res =
-        await http.post(Uri.parse('http://localhost:8000/api/RegisterLocation'),
-            headers: {
-              'Content-Type': 'application/json; charset=UTF-8',
-              'X-CSRF-TOKEN': token,
-            },
-            body: jsonEncode({
-              'HospitalLang': _center.latitude,
-              'HospitalLong': _center.longitude,
-              'HospitalAddress': display,
-              'HospitalName': NameController.text,
-            }));
+    final res = await Dio().get(
+      ipAddress + '/api/RegisterLocation?HospitalLang='+ 
+      _center.latitude.toString() + '&HospitalLong=' + _center.longitude.toString() 
+      + "&HospitalAddress=" + display + "&HospitalName=" + NameController.text,
+      options: Options(
+        headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        //'X-CSRF-TOKEN': token,
+      },
+      extra: {
+        'withCredentials': false,
+      }),
+    );
 
     if (res.statusCode == 200) {
       showYesNoDialog(
         context: context,
         title: "Location has been sent",
-        message:
-            "The specified location has been marked on the map, Thank You for your Contribution.",
+        message: "The specified location has been marked on the map, Thank You for your Contribution.",
         positiveButton: "Close",
       );
     } else {
       print("Status Code: ${res.statusCode}");
-      // print("Response Body: ${res.body}");
+      // print("Response Body: ${res.data}");
       print("Headers: ${res.headers}");
-      print("Request URL: ${res.request?.url}");
       print("Something wrong, Please Try Again");
     }
   }
@@ -199,16 +215,17 @@ class MapsFormState extends State<MapsForm> {
       NameController.text = widget.hospitalName!;
 
       _markers.add(Marker(
-          width: 80.0,
-          height: 80.0,
-          point: _center,
-          builder: (ctx) => Container(
-                child: Icon(
-                  Icons.location_on,
-                  color: Colors.red,
-                  size: 40.0,
-                ),
-              )));
+        width: 80.0,
+        height: 80.0,
+        point: _center,
+        builder: (ctx) => Container(
+          child: Icon(
+            Icons.location_on,
+            color: Colors.red,
+            size: 40.0,
+          ),
+        ),
+      ));
     }
   }
 

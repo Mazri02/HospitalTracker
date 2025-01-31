@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Location;
+use Illuminate\Support\Facades\Log;
 
 class LocationController {
     public function RegisterLocation(Request $req){
-        print($req);
+        Log::info($req);
         $location = new Location();
         $location->HospitalName = $req->HospitalName;
         $location->HospitalLang = $req->HospitalLang;;
@@ -17,7 +18,7 @@ class LocationController {
                 'status' => 200,
                 'data' => "Data Inserted Successfully"
             ]);
-        }
+        }   
 
         return ([
             'status' => 401,
@@ -25,7 +26,7 @@ class LocationController {
         ]);
     }
 
-    public function ViewAllLocation(Request $req) {
+    public function ViewAllLocation() {
         return Location::all();
     }
 
@@ -34,6 +35,7 @@ class LocationController {
     }
 
     public function DeleteLocation(Request $req) {
+        Log::info($req);
         if(Location::where("LocationID",$req->LocationID)->delete()){
             return ([
                 "status" => 200, 
