@@ -31,32 +31,29 @@ class _AdBoxState extends State<AdBox> {
   Widget build(BuildContext context) {
     return _imageUrls.isEmpty
         ? const SizedBox.shrink()
-        : Transform.scale(
-            scale: 1.1,
-            child: SizedBox(
-              height: widget.height,
-              width: widget.width,
-              child: CarouselSlider(
-                options: CarouselOptions(
-                  autoPlay: true,
-                  autoPlayInterval: const Duration(seconds: 5),
-                  autoPlayAnimationDuration: const Duration(milliseconds: 800),
-                  autoPlayCurve: Curves.fastOutSlowIn,
-                  pauseAutoPlayOnTouch: true,
-                  aspectRatio: widget.width / widget.height,
-                  enlargeCenterPage: true,
-                  enlargeStrategy: CenterPageEnlargeStrategy.scale,
-                  enlargeFactor: 0.5,
-                  viewportFraction: 0.9,
-                ),
-                items: _imageUrls
-                    .map((imageUrl) => Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          // scale: 2,
-                        ))
-                    .toList(),
+        : SizedBox(
+            height: widget.height,
+            width: widget.width,
+            child: CarouselSlider(
+              options: CarouselOptions(
+                autoPlay: true,
+                autoPlayInterval: const Duration(seconds: 5),
+                autoPlayAnimationDuration: const Duration(milliseconds: 800),
+                autoPlayCurve: Curves.fastOutSlowIn,
+                pauseAutoPlayOnTouch: true,
+                aspectRatio: widget.width / widget.height,
+                enlargeCenterPage: true,
+                enlargeStrategy: CenterPageEnlargeStrategy.scale,
+                enlargeFactor: 0.5,
+                viewportFraction: 0.9,
               ),
+              items: _imageUrls
+                  .map((imageUrl) => Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        // scale: 2,
+                      ))
+                  .toList(),
             ),
           );
   }
