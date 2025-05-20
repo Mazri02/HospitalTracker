@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/views/about/acknowledgement.dart';
-import 'package:mobile_frontend/views/home.dart';
+import 'package:mobile_frontend/views/users/home.dart';
 
 import '../views/about/credits.dart';
 import '../views/about/termsAndService.dart';
-import '../views/register.dart';
+import '../views/authentication/register.dart';
 // import 'package:mobile_frontend/views/register.dart';
 
 class toNavigate {
