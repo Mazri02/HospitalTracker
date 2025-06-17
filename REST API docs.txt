@@ -1,0 +1,226 @@
+/api/LoginDoctor 
+Send => {
+  UserEmail: String,
+  UserPassword: String
+},
+Receive => {
+  status: Number,
+  token: String,
+  data: {
+    UserID: Number,
+    UserName: String,
+    UserEmail: String
+  }
+}
+
+/api/RegisterDoctor 
+Send => {
+  UserEmail: String,
+  UserPassword: String,
+  UserName: String,
+  DoctorPict: File (optional)
+},
+Receive => {
+  status: Number,
+  message: String,
+  data: {
+    UserID: Number,
+    UserName: String,
+    UserEmail: String,
+    DoctorPict: String (nullable)
+  }
+}
+
+/api/RegisterUser 
+Send => {
+  UserEmail: String,
+  UserPassword: String,
+  UserName: String
+},
+Receive => {
+  status: Number,
+  message: String,
+  data: {
+    UserID: Number,
+    UserName: String,
+    UserEmail: String
+  }
+}
+
+/api/LoginUser 
+Send => {
+  UserEmail: String,
+  UserPassword: String
+},
+Receive => {
+  status: Number,
+  token: String,
+  data: {
+    UserID: Number,
+    UserName: String,
+    UserEmail: String
+  }
+}
+
+/api/logout/{id} 
+Send => None (requires authenticated user),
+Receive => {
+  status: Number,
+  data: String ("Logout Successfull")
+}
+
+/api/DeleteUser/{id}/{type} 
+Send => None (requires authenticated user),
+Receive => {
+  status: Number,
+  data: String ("Delete Successful")
+}
+
+/api/GetUserData/{id}/{type} 
+Send => None (requires authenticated user),
+Receive => {
+  status: Number,
+  data: {
+    UserID: Number,
+    UserName: String,
+    UserEmail: String,
+    UserPassword: String (for doctor),
+    DoctorPict: String (for doctor, nullable)
+  }
+}
+
+/api/EditUser/{id}/{type} 
+Send => {
+  UserEmail: String,
+  UserName: String,
+  UserPassword: String (optional),
+  DoctorPict: File (optional, for doctor only)
+},
+Receive => {
+  status: Number,
+  message: String,
+  data: {
+    UserID: Number,
+    UserName: String,
+    UserEmail: String,
+    UserPassword: String (for doctor),
+    DoctorPict: String (for doctor, nullable)
+  } 
+}
+
+/api/AllHospital 
+Send => None (requires authenticated user),
+Receive => [{
+  HospitalID: Number,
+  HospitalName: String,
+  HospitalLang: Number,
+  HospitalLong: Number,
+  HospitalAddress: String,
+  Total_Appointments: Number,
+  Total_Reviews: Number,
+  Ratings: Number,
+  assign: Object,
+  doctor: Object
+}]
+
+/api/ViewHospital/{id} 
+Send => None (requires authenticated user),
+Receive => {
+  HospitalID: Number,
+  HospitalName: String,
+  HospitalLang: Number,
+  HospitalLong: Number,
+  HospitalAddress: String,
+  Total_Appointments: Number,
+  Total_Reviews: Number,
+  Ratings: Number,
+  assign: Object,
+  doctor: Object
+}
+
+/api/DeleteHospital/{id} 
+Send => None (requires authenticated user),
+Receive => {
+  status: Number,
+  data: String ("Delete Successful")
+}
+
+/api/RegisterHospital 
+Send => {
+  HospitalName: String,
+  HospitalLang: Number,
+  HospitalLong: Number,
+  HospitalAddress: String,
+  HospitalPict: File (optional)
+},
+Receive => {
+  status: Number,
+  data: String ("Update Successfull")
+}
+
+/api/AssignHospital/{id}/{hostid} 
+Send => None (requires authenticated user),
+Receive => {
+  status: Number,
+  message: String ("Assign Successfull")
+}
+
+/api/LeaveHospital/{id}/{hostid} 
+Send => None (requires authenticated user),
+Receive => {
+  status: Number,
+  data: String ("Leave Successfull")
+}
+
+/api/BookAppointment/{id}/{assignid} 
+Send => {
+  timeAppoint: String (date/time),
+  reasonAppoint: String
+},
+Receive => {
+  status: Number,
+  message: String ("Book Successfull")
+}
+
+/api/CancelAppointment/{appointid} 
+Send => None (requires authenticated user),
+Receive => {
+  status: Number,
+  message: String ("Cancel Successful")
+}
+
+/api/AllAppointment/{hostid} 
+Send => None (requires authenticated user),
+Receive => [{
+ AssignID : Number,
+ Status : String (Pending,Accept,Reject),
+ AssignDate : DateTime ,
+ ReasonVisit : String
+}]
+
+/api/SelectAppointment/{hostid}/{id} 
+Send => None (requires authenticated user),
+Receive => [{
+ AssignID : Number,
+ Status : String (Pending,Accept,Reject),
+ AssignDate : DateTime ,
+ ReasonVisit : String
+}]
+
+/api/UpdateAppointment/{id}/{status} 
+Send => None (requires authenticated user),
+Receive => {
+  status: Number,
+  data: String ("Update Successful")
+}
+
+/api/SubmitReview/{id} 
+Send => {
+  reviews: String,
+  ratings: Number
+},
+Receive => Updated Appointment object
+
+/api/DeleteReview/{id} 
+Send => None (requires authenticated user),
+Receive => Updated Appointment object

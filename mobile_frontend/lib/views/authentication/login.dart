@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:mobile_frontend/utils/navigator.dart';
+import 'package:mobile_frontend/views/doctor/d_home.dart';
 import 'package:mobile_frontend/widget/customButton.dart';
 import 'package:mobile_frontend/widget/fieldbox.dart';
 import 'package:http/http.dart' as http;
@@ -25,36 +26,44 @@ class _LoginPageState extends State<LoginPage> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DHomeScreen(
+          // userData: response['data'],
+          userData: {},
+        ),
+      ),
+    );
 
-    try {
-      final response = await _apiService.login(
-        _emailController.text,
-        _passwordController.text,
-      );
+    // try {
+    //   final response = await _apiService.login(
+    //     _emailController.text,
+    //     _passwordController.text,
+    //   );
 
-      if (response['status'] == 200) {
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response['message'] ?? 'Login successful')),
-        );
+    //   if (response['status'] == 200) {
+    //     ScaffoldMessenger.of(context).showSnackBar(
+    //       SnackBar(content: Text(response['message'] ?? 'Login successful')),
+    //     );
 
-        // Navigate to home screen with user data
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomeScreen(
-              userData: response['data'],
-            ),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response['error'] ?? 'Login failed')),
-        );
-      }
-    } finally {
-      setState(() => _isLoading = false);
-    }
+    //     Navigator.pushReplacement(
+    //       context,
+    //       MaterialPageRoute(
+    //         builder: (context) => DHomeScreen(
+    //           // userData: response['data'],
+    //           userData: {},
+    //         ),
+    //       ),
+    //     );
+    //   } else {
+    //     ScaffoldMessenger.of(context).showSnackBar(
+    //       SnackBar(content: Text(response['error'] ?? 'Login failed')),
+    //     );
+    //   }
+    // } finally {
+    //   setState(() => _isLoading = false);
+    // }
   }
 
   @override

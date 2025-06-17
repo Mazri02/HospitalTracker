@@ -3,9 +3,8 @@ import 'dart:convert';
 
 class ApiService {
   // Base URL for your Laravel backend
-  static const String baseUrl = 'http://192.168.0.15:8000'; //tukar ip sendiri
+  static const String baseUrl = 'http://192.168.0.11:8000';
 
-  // Singleton pattern
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal();

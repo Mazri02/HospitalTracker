@@ -31,7 +31,7 @@ class _DHomeScreenState extends State<DHomeScreen> {
   String longitude = "Fetching...";
   String address = "Fetching address...";
   final LocationService _locationService = LocationService();
-  final ipAddress = 'http://192.168.0.15:8000'; // Tukar IP Sendiri Time Present
+  final ipAddress = 'http://192.168.0.11:8000'; // Tukar IP Sendiri Time Present
 
   @override
   void initState() {
