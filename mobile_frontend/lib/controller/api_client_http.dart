@@ -1,21 +1,90 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_frontend/model/appointment_model.dart';
 import 'package:mobile_frontend/model/hospital_model.dart';
 
 class ApiClient {
-  static String baseUrl = '${dotenv.env['APP_HOST']}/api';
+  static String baseUrl = '${dotenv.env['BASE_URL']}/api';
   static const Map<String, String> headers = {
     'Content-Type': 'application/json',
     // Add any other headers like authorization if needed
     // 'Authorization': 'Bearer your_token',
   };
 
-  static String authToken = 'xxxjkkkwk';
+  final storage = FlutterSecureStorage();
+
+  // GET USER DETAIL
+  Future<Map<String, dynamic>> getUserData({
+    required String userId,
+    required String userType, // 'patient' or 'doctor'
+    required BuildContext context,
+  }) async {
+    final storage = FlutterSecureStorage();
+    final uri = Uri.parse('$baseUrl/GetUserData/$userId/$userType');
+
+    debugPrint('API Endpoint: $uri');
+
+    try {
+      // 1. Get stored token
+      final token = await storage.read(key: 'token');
+      if (token == null)
+        throw UnauthorizedException('No authentication token found');
+
+      // 2. Make authenticated GET request
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      debugPrint('Status code: ${response.statusCode}');
+      debugPrint('Raw response: ${response.body}');
+
+      if (response.body.isEmpty) {
+        throw Exception('Empty response from server');
+      }
+
+      final responseData = json.decode(response.body);
+
+      // 3. Handle response
+      if (response.statusCode == 200) {
+        // Validate required fields
+        if (responseData['data'] == null) {
+          throw FormatException('Missing "data" in response');
+        }
+
+        return responseData['data']; // Return user data object
+      } else {
+        final errorMessage = responseData['error'] ??
+            responseData['message'] ??
+            'Failed to fetch user data (${response.statusCode})';
+
+        switch (response.statusCode) {
+          case 401:
+            throw UnauthorizedException(errorMessage);
+          case 404:
+            throw Exception('User not found');
+          case 500:
+            throw ServerException(errorMessage);
+          default:
+            throw Exception(errorMessage);
+        }
+      }
+    } catch (e) {
+      debugPrint('GetUserData error: $e');
+      rethrow;
+    }
+  }
 
   // READ ALL HOSPITAL
-  static Future<List<Hospital>> readAllHospital() async {
+  Future<List<Hospital>> readAllHospital() async {
+    var authToken = await storage.read(key: 'token');
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/AllHospital'),
@@ -63,7 +132,8 @@ class ApiClient {
   }
 
   //VIEW HOSPITAL BY ID
-  static Future<dynamic> viewHospitalById(String id) async {
+  Future<dynamic> viewHospitalById(String id) async {
+    var authToken = await storage.read(key: 'token');
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/AllHospital'),
@@ -102,9 +172,10 @@ class ApiClient {
   }
 
   //BOOK APPOINMENT
-  static Future<AppointmentResponse> bookAppointment({
+  Future<AppointmentResponse> bookAppointment({
     required AppointmentBooking booking,
   }) async {
+    var authToken = await storage.read(key: 'token');
     try {
       final uri = Uri.parse(
           '$baseUrl/BookAppointment/${booking.hospitalId}/${booking.assignId}');

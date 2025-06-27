@@ -112,8 +112,8 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
         _isLoading = true;
         _error = null;
       });
-
-      final hospitals = await ApiClient.readAllHospital();
+      final apiClient = ApiClient();
+      final hospitals = await apiClient.readAllHospital();
 
       setState(() {
         _hospitals = hospitals;
@@ -788,8 +788,10 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
         );
 
         // Call API to book appointment
+        final apiClient = ApiClient();
+
         final response =
-            await ApiClient.bookAppointment(booking: appointmentBooking);
+            await apiClient.bookAppointment(booking: appointmentBooking);
 
         // Close loading dialog
         if (mounted) Navigator.of(context).pop();

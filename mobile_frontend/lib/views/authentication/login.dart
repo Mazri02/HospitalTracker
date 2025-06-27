@@ -31,6 +31,11 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     try {
+      // Print the values before making the API call
+      debugPrint('Email entered: ${_emailController.text}');
+      debugPrint('Password entered: ${_passwordController.text}');
+      debugPrint('Selected role: $_selectedRole');
+
       if (_selectedRole == UserRole.patient) {
         await _apiService.loginAsUser(
           _emailController.text,
@@ -50,6 +55,9 @@ class _LoginPageState extends State<LoginPage> {
         SnackBar(content: Text('Login successful')),
       );
     } catch (e) {
+      // Print the error for debugging
+      debugPrint('Login error: $e');
+
       // Handle different types of exceptions
       String errorMessage = 'Login failed';
 
@@ -60,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
       } else if (e is ServerException) {
         errorMessage = e.message;
       } else if (e is FormatException) {
-        errorMessage = 'Data format error';
+        errorMessage = e.toString();
       } else {
         errorMessage = e.toString();
       }

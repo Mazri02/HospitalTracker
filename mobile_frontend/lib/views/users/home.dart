@@ -121,10 +121,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (continueLogout == true) {
       try {
-        // await apiService.logout(userId, context);
+        await apiService.logout(context);
+        debugPrint('login success');
       } catch (e) {
         // Handle error
-        print('Logout failed: $e');
+        debugPrint('Logout failed: $e');
       }
       // Use the navigation utility instead
       toNavigate.gotoLogin(context);
