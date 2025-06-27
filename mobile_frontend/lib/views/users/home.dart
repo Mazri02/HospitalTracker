@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:mobile_frontend/services/api_service.dart';
 import 'package:mobile_frontend/utils/navigator.dart';
 import 'package:mobile_frontend/views/about/about.dart';
 import 'package:mobile_frontend/views/doctor/mapsInsert.dart';
@@ -31,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String longitude = "Fetching...";
   String address = "Fetching address...";
   final LocationService _locationService = LocationService();
-  final ipAddress = 'http://192.168.0.15:8000'; // Tukar IP Sendiri Time Present
+  final ipAddress = 'http://192.168.0.5:8000'; // Tukar IP Sendiri Time Present
 
   @override
   void initState() {
@@ -115,7 +116,16 @@ class _HomeScreenState extends State<HomeScreen> {
       message: 'Are you sure you want to logout?',
     );
 
+    final apiService = ApiService();
+
+
     if (continueLogout == true) {
+      try {
+        // await apiService.logout(userId, context);
+      } catch (e) {
+        // Handle error
+        print('Logout failed: $e');
+      }
       // Use the navigation utility instead
       toNavigate.gotoLogin(context);
     }
@@ -230,15 +240,19 @@ class _HomeScreenState extends State<HomeScreen> {
                             }
                           },
                         ),
-                        // MenuCardSmallTile(
-                        //   imageLink: 'assets/icons/mapinsert.png',
-                        //   label: 'Maps Insert',
-                        //   builder: (context) => MapsForm(edit: true),
-                        // ),
+                        MenuCardSmallTile(
+                          imageLink: 'assets/icons/mapinsert.png',
+                          label: 'Maps',
+                          onTap: () {
+                            Navigator.pushNamed(context, '/hospitalmaps');
+                          },
+                        ),
                         MenuCardSmallTile(
                           imageLink: 'assets/icons/aboutproject.png',
                           label: 'About',
-                          builder: (context) => const AboutPage(),
+                          onTap: () {
+                            Navigator.pushNamed(context, '/about');
+                          },
                         ),
                         MenuCardSmallTile(
                           imageLink: 'assets/icons/logout.png',
@@ -335,14 +349,14 @@ class MenuCardSmallTile extends StatelessWidget {
     Key? key,
     required this.imageLink,
     required this.label,
-    required this.builder,
+    this.builder,
     this.onTap,
     this.backgroundColor = Colors.transparent,
   }) : super(key: key);
 
   final String imageLink;
   final String label;
-  final WidgetBuilder builder;
+  final WidgetBuilder? builder;
   final VoidCallback? onTap;
   final Color? backgroundColor;
 

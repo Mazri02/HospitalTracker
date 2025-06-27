@@ -1,10 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:gap/gap.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:mobile_frontend/services/api_service.dart';
 import 'package:mobile_frontend/utils/navigator.dart';
-import 'package:mobile_frontend/views/about/about.dart';
 import 'package:mobile_frontend/views/doctor/mapsInsert.dart';
 import 'package:mobile_frontend/views/users/profile.dart';
 import 'package:mobile_frontend/widget/adbox.dart';
@@ -31,7 +32,7 @@ class _DHomeScreenState extends State<DHomeScreen> {
   String longitude = "Fetching...";
   String address = "Fetching address...";
   final LocationService _locationService = LocationService();
-  final ipAddress = 'http://192.168.0.15:8000'; // Tukar IP Sendiri Time Present
+  final ipAddress = dotenv.env['BASE_URL']; // Tukar IP Sendiri Time Present
 
   @override
   void initState() {
@@ -41,7 +42,7 @@ class _DHomeScreenState extends State<DHomeScreen> {
 
   Future<Widget> GetHospital() async {
     final response = await Dio().get(
-      ipAddress + '/csrf-token',
+      '$ipAddress/csrf-token',
       options: Options(headers: {
         'withCredentials': 'true',
       }),
@@ -57,7 +58,7 @@ class _DHomeScreenState extends State<DHomeScreen> {
     }
 
     final res = await Dio().get(
-      ipAddress + '/api/ViewAllLocation',
+      '$ipAddress/api/ViewAllLocation',
       options: Options(headers: {
         'Content-Type': 'application/json; charset=UTF-8',
         'X-CSRF-TOKEN': token,
@@ -115,6 +116,13 @@ class _DHomeScreenState extends State<DHomeScreen> {
     );
 
     if (continueLogout == true) {
+      final apiService = ApiService();
+      try {
+        // await apiService.logout(userId, context);
+      } catch (e) {
+        // Handle error
+        print('Logout failed: $e');
+      }
       // Use the navigation utility instead
       toNavigate.gotoLogin(context);
     }
@@ -233,11 +241,16 @@ class _DHomeScreenState extends State<DHomeScreen> {
                           imageLink: 'assets/icons/mapinsert.png',
                           label: 'Maps Insert',
                           builder: (context) => const MapsForm(edit: true),
+                          onTap: () {
+                            Navigator.pushNamed(context, '/maps');
+                          },
                         ),
                         MenuCardSmallTile(
                           imageLink: 'assets/icons/aboutproject.png',
                           label: 'About',
-                          builder: (context) => const AboutPage(),
+                          onTap: () {
+                            Navigator.pushNamed(context, '/about');
+                          },
                         ),
                         MenuCardSmallTile(
                           imageLink: 'assets/icons/logout.png',
@@ -334,14 +347,14 @@ class MenuCardSmallTile extends StatelessWidget {
     Key? key,
     required this.imageLink,
     required this.label,
-    required this.builder,
+    this.builder,
     this.onTap,
     this.backgroundColor = Colors.transparent,
   }) : super(key: key);
 
   final String imageLink;
   final String label;
-  final WidgetBuilder builder;
+  final WidgetBuilder? builder;
   final VoidCallback? onTap;
   final Color? backgroundColor;
 
