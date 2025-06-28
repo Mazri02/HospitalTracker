@@ -85,6 +85,7 @@ class ApiClient {
   // READ ALL HOSPITAL
   Future<List<Hospital>> readAllHospital() async {
     var authToken = await storage.read(key: 'token');
+    debugPrint('Auth Token: $authToken');
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/AllHospital'),
@@ -93,40 +94,63 @@ class ApiClient {
           'Authorization': 'Bearer $authToken',
         },
       ).timeout(const Duration(seconds: 15));
-
+      debugPrint('Response Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
       final responseData = json.decode(response.body);
-
       switch (response.statusCode) {
         case 200:
           try {
-            final List<dynamic> hospitalsJson = json.decode(response.body);
-            if (hospitalsJson.isEmpty) {
-              print('Hospital data is Empty');
-              return []; // Return empty list instead of null
+            // Check if responseData is already a List
+            if (responseData is! List) {
+              debugPrint('Expected List but got ${responseData.runtimeType}');
+              throw const FormatException('Expected array of hospitals');
             }
-            return hospitalsJson
-                .map((json) => Hospital.fromJson(json))
-                .toList();
+
+            if (responseData.isEmpty) {
+              debugPrint('Hospital data is Empty');
+              return [];
+            }
+
+            List<Hospital> hospitals = responseData.map((hospitalJson) {
+              try {
+                return Hospital.fromJson(hospitalJson);
+              } catch (e) {
+                debugPrint('Error parsing hospital entry: $hospitalJson');
+                throw FormatException('Failed to parse hospital data: $e');
+              }
+            }).toList();
+
+            debugPrint('Successfully parsed ${hospitals.length} hospitals');
+            return hospitals;
           } catch (e) {
-            throw FormatException('Wrong on format ${e.toString()}');
+            debugPrint('Detailed parsing error: ${e.toString()}');
+            if (e is FormatException) {
+              rethrow; // Keep FormatException as is
+            }
+            throw FormatException('Data parsing failed: ${e.toString()}');
           }
         case 400:
+          debugPrint('Bad Request: ${responseData['message']}');
           throw BadRequestException(
             responseData['message']?.toString() ?? 'Invalid hospital data',
           );
         case 401:
+          debugPrint('Unauthorized: ${responseData['message']}');
           throw UnauthorizedException(
             responseData['message']?.toString() ??
                 'Please login to book appointments',
           );
         case 500:
+          debugPrint('Server Error: ${responseData['message']}');
           throw ServerException(
             responseData['message']?.toString() ?? 'Internal server error',
           );
         default:
+          debugPrint('Unexpected status code: ${response.statusCode}');
           throw Exception('Unexpected status code: ${response.statusCode}');
       }
     } catch (e) {
+      debugPrint('General Exception: ${e.toString()}');
       throw Exception('Failed to fetch hospitals: ${e.toString()}');
     }
   }
@@ -136,7 +160,7 @@ class ApiClient {
     var authToken = await storage.read(key: 'token');
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/AllHospital'),
+        Uri.parse('$baseUrl/ViewHospital/$id'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $authToken',

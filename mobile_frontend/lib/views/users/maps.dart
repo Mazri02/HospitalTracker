@@ -133,58 +133,62 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
   void _updateMarkers() {
     if (_currentLocation == null) return;
 
+    // Filter out hospitals with invalid coordinates
+    final validHospitals = _filteredHospitals.where((hospital) {
+      final lat = hospital.hospitalLang;
+      final lng = hospital.hospitalLong;
+      return lat != null &&
+          lng != null &&
+          lat >= -90 &&
+          lat <= 90 &&
+          lng >= -180 &&
+          lng <= 180;
+    }).toList();
+
     setState(() {
       _markers = [
         // Current location marker
         Marker(
           point: _currentLocation!,
-          builder: (BuildContext context) {
-            return const Icon(
-              Icons.my_location,
-              color: Colors.blue,
-              size: 30.0,
-            );
-          },
+          builder: (BuildContext context) => const Icon(
+            Icons.my_location,
+            color: Colors.blue,
+            size: 30.0,
+          ),
         ),
-        // Hospital markers
-        ..._filteredHospitals
+        // Hospital markers (only valid ones)
+        ...validHospitals
             .map((hospital) => Marker(
-                  point: LatLng(hospital.hospitalLang, hospital.hospitalLong),
-                  builder: (BuildContext context) {
-                    return GestureDetector(
-                      onTap: () => _showHospitalDetails(hospital),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.local_hospital,
-                            color: Colors.red,
-                            size: 30.0,
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 4, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                              boxShadow: [
-                                BoxShadow(
+                  point: LatLng(hospital.hospitalLang!, hospital.hospitalLong!),
+                  builder: (BuildContext context) => GestureDetector(
+                    onTap: () => _showHospitalDetails(hospital),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.local_hospital,
+                            color: Colors.red, size: 30.0),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                            boxShadow: [
+                              BoxShadow(
                                   color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 2,
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              hospital.hospitalName,
-                              style: const TextStyle(
-                                  fontSize: 10, fontWeight: FontWeight.bold),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                                  blurRadius: 2),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  },
+                          child: Text(
+                            hospital.hospitalName ?? 'Unknown',
+                            style: const TextStyle(
+                                fontSize: 10, fontWeight: FontWeight.bold),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ))
             .toList(),
       ];
@@ -217,10 +221,10 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
       } else {
         _filteredHospitals = _hospitals
             .where((hospital) =>
-                hospital.hospitalName
+                hospital.hospitalName!
                     .toLowerCase()
                     .contains(query.toLowerCase()) ||
-                hospital.hospitalAddress
+                hospital.hospitalAddress!
                     .toLowerCase()
                     .contains(query.toLowerCase()))
             .toList();
@@ -396,12 +400,18 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
                       itemCount: _filteredHospitals.length,
                       itemBuilder: (context, index) {
                         final hospital = _filteredHospitals[index];
-                        final distance = _currentLocation != null
+                        final distance = _currentLocation != null &&
+                                hospital.hospitalLang != null &&
+                                hospital.hospitalLong != null &&
+                                hospital.hospitalLang! >= -90 &&
+                                hospital.hospitalLang! <= 90 &&
+                                hospital.hospitalLong! >= -180 &&
+                                hospital.hospitalLong! <= 180
                             ? _calculateDistance(
                                 _currentLocation!,
-                                LatLng(hospital.hospitalLang,
-                                    hospital.hospitalLong))
-                            : 0.0;
+                                LatLng(hospital.hospitalLang!,
+                                    hospital.hospitalLong!))
+                            : null;
 
                         return Container(
                           width: 150,
@@ -416,7 +426,7 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      hospital.hospitalName,
+                                      hospital.hospitalName ?? 'N/A',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14,
@@ -425,7 +435,7 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
                                       maxLines: 2,
                                     ),
                                     Text(
-                                      hospital.hospitalAddress,
+                                      hospital.hospitalAddress ?? 'N/A',
                                       style: const TextStyle(fontSize: 12),
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -434,7 +444,7 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
                                       children: [
                                         const Icon(Icons.location_on, size: 14),
                                         Text(
-                                          '${distance.toStringAsFixed(1)} km',
+                                          '${distance?.toStringAsFixed(1) ?? '0.0'} km',
                                           style: const TextStyle(fontSize: 12),
                                         ),
                                         const Spacer(),
@@ -444,7 +454,8 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
                                                 size: 14, color: Colors.amber),
                                             Text(
                                               hospital.ratings
-                                                  .toStringAsFixed(1),
+                                                      ?.toStringAsFixed(1) ??
+                                                  'N/A',
                                               style:
                                                   const TextStyle(fontSize: 12),
                                             ),
@@ -486,6 +497,44 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
   final _formKey = GlobalKey<FormState>();
   DateTime selectedDueDate = DateTime.now().add(const Duration(days: 1));
 
+  // Add state variables for loading and detailed hospital data
+  bool _isLoading = true;
+  Hospital? _detailedHospital;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHospitalDetails();
+  }
+
+  // Add method to load detailed hospital data
+  Future<void> _loadHospitalDetails() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final apiClient = ApiClient();
+      final detailedHospital = await apiClient.viewHospitalById(
+        widget.hospital.hospitalID.toString(),
+      );
+
+      setState(() {
+        _detailedHospital = detailedHospital;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+        // Fallback to the original hospital data if API call fails
+        _detailedHospital = widget.hospital;
+      });
+    }
+  }
+
   double _calculateDistance(LatLng point1, LatLng point2) {
     const double earthRadius = 6371; // km
     double dLat = _degreesToRadians(point2.latitude - point1.latitude);
@@ -506,264 +555,419 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
 
   @override
   Widget build(BuildContext context) {
-    final LatLng hospitalLocation =
-        LatLng(widget.hospital.hospitalLang, widget.hospital.hospitalLong);
-    final double distance =
-        _calculateDistance(widget.currentLocation, hospitalLocation);
+    // Use detailed hospital data if available, otherwise use the original
+    final currentHospital = _detailedHospital ?? widget.hospital;
+
+    final LatLng? hospitalLocation = currentHospital.hospitalLang != null &&
+            currentHospital.hospitalLong != null &&
+            currentHospital.hospitalLang! >= -90 &&
+            currentHospital.hospitalLang! <= 90 &&
+            currentHospital.hospitalLong! >= -180 &&
+            currentHospital.hospitalLong! <= 180
+        ? LatLng(currentHospital.hospitalLang!, currentHospital.hospitalLong!)
+        : null;
+
+    final double? distance = hospitalLocation != null
+        ? _calculateDistance(widget.currentLocation, hospitalLocation)
+        : null;
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.hospital.hospitalName)),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Map showing location
-            SizedBox(
-              height: 200,
-              child: FlutterMap(
-                options: MapOptions(
-                  center: hospitalLocation,
-                  zoom: 15.0,
-                ),
+      appBar: AppBar(
+        title: Text(currentHospital.hospitalName ?? 'N/A'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadHospitalDetails,
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.hospital.finder.app',
-                  ),
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: hospitalLocation,
-                        builder: (BuildContext context) {
-                          return const Icon(
-                            Icons.local_hospital,
-                            color: Colors.red,
-                            size: 40.0,
-                          );
-                        },
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Loading hospital details...'),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Error message if any
+                  if (_error != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16.0),
+                      margin: const EdgeInsets.all(8.0),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        border: Border.all(color: Colors.orange.shade300),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ],
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning, color: Colors.orange.shade700),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Using cached data',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange.shade700,
+                                  ),
+                                ),
+                                Text(
+                                  'Could not load latest hospital details',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.orange.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Map showing location
+                  SizedBox(
+                    height: 200,
+                    child: hospitalLocation != null
+                        ? FlutterMap(
+                            options: MapOptions(
+                              center: hospitalLocation,
+                              zoom: 15.0,
+                            ),
+                            children: [
+                              TileLayer(
+                                urlTemplate:
+                                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                userAgentPackageName: 'com.hospital.finder.app',
+                              ),
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: hospitalLocation,
+                                    builder: (BuildContext context) {
+                                      return const Icon(
+                                        Icons.local_hospital,
+                                        color: Colors.red,
+                                        size: 40.0,
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ],
+                          )
+                        : const Center(
+                            child: Text('Invalid hospital location')),
+                  ),
+
+                  // Hospital information card
+                  Card(
+                    elevation: 4,
+                    margin: const EdgeInsets.all(8.0),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 30,
+                                backgroundColor: Colors.red.shade100,
+                                child: const Icon(Icons.local_hospital,
+                                    color: Colors.red, size: 30),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      currentHospital.hospitalName ?? 'N/A',
+                                      style: const TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      currentHospital.hospitalAddress ?? 'N/A',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.star,
+                                            size: 18, color: Colors.amber),
+                                        Text(
+                                          ' ${currentHospital.ratings?.toStringAsFixed(1) ?? 'N/A'}  (${currentHospital.totalReviews ?? 0} reviews)',
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.location_on,
+                                            size: 16, color: Colors.grey),
+                                        Text(
+                                          distance != null
+                                              ? '${distance.toStringAsFixed(1)} km away'
+                                              : 'Distance unavailable',
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const Divider(height: 24),
+
+                          // Statistics
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Column(
+                                children: [
+                                  Text(
+                                    currentHospital.totalAppointments
+                                            ?.toString() ??
+                                        '0',
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                  const Text('Appointments'),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  Text(
+                                    currentHospital.totalReviews?.toString() ??
+                                        '0',
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                  const Text('Reviews'),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  Text(
+                                    currentHospital.ratings
+                                            ?.toStringAsFixed(1) ??
+                                        'N/A',
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.amber,
+                                    ),
+                                  ),
+                                  const Text('Rating'),
+                                ],
+                              ),
+                            ],
+                          ),
+
+                          const Divider(height: 24),
+
+                          const Text(
+                            'Patient Review',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          const Divider(height: 24),
+
+                          // Doctor information (if available from detailed API)
+                          if (currentHospital.doctor != null)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Available Doctors',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border:
+                                        Border.all(color: Colors.blue.shade200),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 20,
+                                        backgroundColor: Colors.blue.shade100,
+                                        child: const Icon(Icons.person,
+                                            color: Colors.blue, size: 20),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              currentHospital.doctor.toString(),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            const Text(
+                                              'Available for consultation',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Divider(height: 24),
+                              ],
+                            ),
+
+                          // Forms section
+                          const Text(
+                            'Make Appointment',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          Form(
+                            key: _formKey,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.max,
+                              children: [
+                                // Expanded reason visit field
+                                TextFormField(
+                                  controller: _reasonVisitController,
+                                  maxLines: 3,
+                                  minLines: 3,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Reason of Visit*',
+                                    border: OutlineInputBorder(),
+                                    alignLabelWithHint: true,
+                                    hintText:
+                                        'Describe your symptoms or reason for visit...',
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please describe your reason for visit';
+                                    }
+                                    if (value.length < 20) {
+                                      return 'Please provide more details (at least 20 characters)';
+                                    }
+                                    return null;
+                                  },
+                                  textCapitalization:
+                                      TextCapitalization.sentences,
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Date field
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () async {
+                                          final DateTime? picked =
+                                              await showDatePicker(
+                                            context: context,
+                                            initialDate: selectedDueDate,
+                                            firstDate: DateTime.now(),
+                                            lastDate: DateTime(2030),
+                                          );
+                                          if (picked != null) {
+                                            setState(() {
+                                              selectedDueDate = picked;
+                                            });
+                                          }
+                                        },
+                                        child: InputDecorator(
+                                          decoration: const InputDecoration(
+                                            labelText: 'Appointment Date',
+                                            border: OutlineInputBorder(),
+                                            suffixIcon:
+                                                Icon(Icons.calendar_today),
+                                          ),
+                                          child: Text(
+                                            DateFormat('EEE, MMM d, y')
+                                                .format(selectedDueDate),
+                                            style:
+                                                const TextStyle(fontSize: 16),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-
-            // Hospital information card
-            Card(
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 30,
-                          backgroundColor: Colors.red.shade100,
-                          child: const Icon(Icons.local_hospital,
-                              color: Colors.red, size: 30),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.hospital.hospitalName,
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                widget.hospital.hospitalAddress,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  const Icon(Icons.star,
-                                      size: 18, color: Colors.amber),
-                                  Text(
-                                    ' ${widget.hospital.ratings.toStringAsFixed(1)} (${widget.hospital.totalReviews} reviews)',
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  const Icon(Icons.location_on,
-                                      size: 16, color: Colors.grey),
-                                  Text(
-                                    ' ${distance.toStringAsFixed(1)} km away',
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const Divider(height: 24),
-
-                    // Statistics
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Column(
-                          children: [
-                            Text(
-                              widget.hospital.totalAppointments.toString(),
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
-                              ),
-                            ),
-                            const Text('Total Appointments'),
-                          ],
-                        ),
-                        Column(
-                          children: [
-                            Text(
-                              widget.hospital.totalReviews.toString(),
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
-                              ),
-                            ),
-                            const Text('Reviews'),
-                          ],
-                        ),
-                        Column(
-                          children: [
-                            Text(
-                              widget.hospital.ratings.toStringAsFixed(1),
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.amber,
-                              ),
-                            ),
-                            const Text('Rating'),
-                          ],
-                        ),
-                      ],
-                    ),
-
-                    const Divider(height: 24),
-
-                    // Forms section
-                    const Text(
-                      'Make Appointment',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.max,
-                        children: [
-                          // Expanded reason visit field
-                          TextFormField(
-                            controller: _reasonVisitController,
-                            maxLines: 3,
-                            minLines: 3,
-                            decoration: const InputDecoration(
-                              labelText: 'Reason of Visit*',
-                              border: OutlineInputBorder(),
-                              alignLabelWithHint: true,
-                              hintText:
-                                  'Describe your symptoms or reason for visit...',
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please describe your reason for visit';
-                              }
-                              if (value.length < 20) {
-                                return 'Please provide more details (at least 20 characters)';
-                              }
-                              return null;
-                            },
-                            textCapitalization: TextCapitalization.sentences,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Date field
-                          Row(
-                            children: [
-                              Expanded(
-                                child: InkWell(
-                                  onTap: () async {
-                                    final DateTime? picked =
-                                        await showDatePicker(
-                                      context: context,
-                                      initialDate: selectedDueDate,
-                                      firstDate: DateTime.now(),
-                                      lastDate: DateTime(2030),
-                                    );
-                                    if (picked != null) {
-                                      setState(() {
-                                        selectedDueDate = picked;
-                                      });
-                                    }
-                                  },
-                                  child: InputDecorator(
-                                    decoration: const InputDecoration(
-                                      labelText: 'Appointment Date',
-                                      border: OutlineInputBorder(),
-                                      suffixIcon: Icon(Icons.calendar_today),
-                                    ),
-                                    child: Text(
-                                      DateFormat('EEE, MMM d, y')
-                                          .format(selectedDueDate),
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
-                    ),
-                  ],
+      bottomNavigationBar: _isLoading
+          ? null
+          : BottomAppBar(
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      _submitAppointment();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('Book Appointment'),
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomAppBar(
-        child: SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () {
-              if (_formKey.currentState!.validate()) {
-                _submitAppointment();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            child: const Text('Book Appointment'),
-          ),
-        ),
-      ),
     );
   }
 
@@ -778,10 +982,13 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
               const Center(child: CircularProgressIndicator()),
         );
 
+        // Use detailed hospital data if available, otherwise use the original
+        final currentHospital = _detailedHospital ?? widget.hospital;
+
         // Create appointment booking object
         final appointmentBooking = AppointmentBooking(
-          hospitalId: widget.hospital.hospitalID.toString(),
-          assignId: widget.hospital.assign?.toString() ??
+          hospitalId: currentHospital.hospitalID.toString(),
+          assignId: currentHospital.assign?.toString() ??
               '1', // Default assign ID if null
           timeAppoint: selectedDueDate,
           reasonAppoint: _reasonVisitController.text,
@@ -805,7 +1012,7 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
             animType: AnimType.bottomSlide,
             title: 'Appointment Booked!',
             desc:
-                'Your appointment at ${widget.hospital.hospitalName} has been scheduled for ${DateFormat('MMM dd, yyyy').format(selectedDueDate)}.',
+                'Your appointment at ${currentHospital.hospitalName} has been scheduled for ${DateFormat('MMM dd, yyyy').format(selectedDueDate)}.',
             btnOkOnPress: () {
               Navigator.of(context).pop(); // Close hospital detail view
             },
@@ -839,5 +1046,11 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
         ).show();
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _reasonVisitController.dispose();
+    super.dispose();
   }
 }
