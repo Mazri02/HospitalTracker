@@ -3,6 +3,7 @@ class Hospital {
   final String? hospitalName;
   final double? hospitalLang;
   final double? hospitalLong;
+  final dynamic hospitalPict;
   final String? hospitalAddress;
   final int? totalAppointments;
   final int? totalReviews;
@@ -17,6 +18,7 @@ class Hospital {
     this.hospitalName,
     this.hospitalLang,
     this.hospitalLong,
+    this.hospitalPict,
     this.hospitalAddress,
     this.totalAppointments,
     this.totalReviews,
@@ -33,14 +35,15 @@ class Hospital {
       hospitalName: json['HospitalName']?.toString(),
       hospitalLang: tryParseDouble(json['HospitalLang']),
       hospitalLong: tryParseDouble(json['HospitalLong']),
+      hospitalPict: json['HospitalPicture'],
       hospitalAddress: json['HospitalAddress']?.toString(),
       totalAppointments: tryParseInt(json['Total_Appointments']),
       totalReviews: tryParseInt(json['Total_Reviews']),
       ratings: tryParseDouble(json['Ratings']),
-      assign: tryParseInt(json['assign']),
-      doctorID: tryParseInt(json['doctorID']),
-      doctorPict: json['doctorPict'],
-      doctorName: json['doctorName']?.toString(),
+      assign: tryParseInt(json['AssignID']),
+      doctorID: tryParseInt(json['DoctorID']),
+      doctorPict: json['DoctorPict'],
+      doctorName: json['DoctorName']?.toString(),
     );
   }
 

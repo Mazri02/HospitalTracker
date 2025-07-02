@@ -38,7 +38,7 @@ class Appointment {
 class AppointmentBooking {
   final String hospitalId;
   final String assignId;
-  final DateTime timeAppoint;
+  final String timeAppoint;
   final String reasonAppoint;
 
   AppointmentBooking({
@@ -49,7 +49,7 @@ class AppointmentBooking {
   });
 
   Map<String, dynamic> toJson() => {
-        'timeAppoint': timeAppoint.toIso8601String(),
+        'timeAppoint': timeAppoint,
         'reasonAppoint': reasonAppoint,
       };
 }

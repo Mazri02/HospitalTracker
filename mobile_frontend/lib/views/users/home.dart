@@ -1,12 +1,14 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:gap/gap.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mobile_frontend/services/api_service.dart';
 import 'package:mobile_frontend/utils/navigator.dart';
 import 'package:mobile_frontend/views/about/about.dart';
 import 'package:mobile_frontend/views/doctor/mapsInsert.dart';
+import 'package:mobile_frontend/views/users/maps.dart';
 import 'package:mobile_frontend/views/users/profile.dart';
 import 'package:mobile_frontend/widget/adbox.dart';
 import 'package:mobile_frontend/widget/balancedgridmenu.dart';
@@ -33,8 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String address = "Fetching address...";
   final LocationService _locationService = LocationService();
 
-final ipAddress = dotenv.env['BASE_URL'];// Tukar IP Sendiri Time Present
-  
+  final ipAddress = dotenv.env['BASE_URL']; // Tukar IP Sendiri Time Present
+
   @override
   void initState() {
     super.initState();
@@ -43,7 +45,7 @@ final ipAddress = dotenv.env['BASE_URL'];// Tukar IP Sendiri Time Present
 
   Future<Widget> GetHospital() async {
     final response = await Dio().get(
-      ipAddress + '/csrf-token',
+      ipAddress! + '/csrf-token',
       options: Options(headers: {
         'withCredentials': 'true',
       }),
@@ -60,7 +62,7 @@ final ipAddress = dotenv.env['BASE_URL'];// Tukar IP Sendiri Time Present
     }
 
     final res = await Dio().get(
-      ipAddress + '/api/ViewAllLocation',
+      ipAddress! + '/api/ViewAllLocation',
       options: Options(headers: {
         'Content-Type': 'application/json; charset=UTF-8',
         'X-CSRF-TOKEN': token,
@@ -118,7 +120,6 @@ final ipAddress = dotenv.env['BASE_URL'];// Tukar IP Sendiri Time Present
     );
 
     final apiService = ApiService();
-
 
     if (continueLogout == true) {
       try {

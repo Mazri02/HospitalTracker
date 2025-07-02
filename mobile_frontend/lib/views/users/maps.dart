@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:latlong2/latlong.dart';
@@ -8,6 +9,7 @@ import 'package:mobile_frontend/controller/api_client_http.dart';
 import 'package:mobile_frontend/model/appointment_model.dart';
 import 'package:mobile_frontend/model/hospital_model.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -166,8 +168,11 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.local_hospital,
-                            color: Colors.red, size: 30.0),
+                        Transform.scale(
+                          scale: 1.5,
+                          child: const Icon(Icons.location_pin,
+                              color: Colors.red, size: 15.0),
+                        ),
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 4, vertical: 2),
@@ -528,9 +533,8 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
 
       setState(() {
         // Filter appointments for this hospital only
-        _userAppointments = appointments
-            .where((appt) => appt.assignId == widget.hospital.assign)
-            .toList();
+        _userAppointments =
+            appointments.where((appt) => appt.reviews != null).toList();
         _loadingAppointments = false;
       });
     } catch (e) {
@@ -600,6 +604,8 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
             currentHospital.hospitalLong! <= 180
         ? LatLng(currentHospital.hospitalLang!, currentHospital.hospitalLong!)
         : null;
+
+    debugPrint('this is location' + hospitalLocation.toString());
 
     final double? distance = hospitalLocation != null
         ? _calculateDistance(widget.currentLocation, hospitalLocation)
@@ -691,9 +697,9 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
                                     point: hospitalLocation,
                                     builder: (BuildContext context) {
                                       return const Icon(
-                                        Icons.local_hospital,
+                                        Icons.location_pin,
                                         color: Colors.red,
-                                        size: 40.0,
+                                        size: 27.0,
                                       );
                                     },
                                   ),
@@ -716,11 +722,43 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
                         children: [
                           Row(
                             children: [
-                              CircleAvatar(
-                                radius: 30,
-                                backgroundColor: Colors.red.shade100,
-                                child: const Icon(Icons.local_hospital,
-                                    color: Colors.red, size: 30),
+                              ClipOval(
+                                child: Image.network(
+                                  dotenv.env['BASE_URL']! +
+                                      '/${currentHospital.hospitalPict}', // Use the constructed URL
+                                  headers: {
+                                    'Content-Type':
+                                        'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                                  },
+                                  fit: BoxFit.cover,
+                                  width: 75,
+                                  height: 75,
+                                  loadingBuilder: (BuildContext context,
+                                      Widget child,
+                                      ImageChunkEvent? loadingProgress) {
+                                    if (loadingProgress == null) {
+                                      return child; // Image is fully loaded
+                                    }
+                                    return Center(
+                                      // Center the progress indicator
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress
+                                                .cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!,
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (BuildContext context,
+                                      Object error, StackTrace? stackTrace) {
+                                    debugPrint(
+                                        'Image loading error: $error'); // Print error to console
+                                    return const Icon(
+                                        Icons
+                                            .broken_image, // Show a broken image icon on error
+                                        color: Colors.red,
+                                        size: 20);
+                                  },
+                                ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
@@ -770,6 +808,86 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
                               ),
                             ],
                           ),
+
+                          // Doctor information (if available from detailed API)
+                          if (currentHospital.doctorID != null)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      ClipOval(
+                                        child: Image.network(
+                                          dotenv.env['BASE_URL']! +
+                                              '/${currentHospital.doctorPict}', // Use the constructed URL
+                                          headers: {
+                                            'Content-Type':
+                                                'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                                          }, // Pass the authentication headers
+                                          fit: BoxFit.cover,
+                                          width: 40,
+                                          height: 40,
+                                          loadingBuilder: (BuildContext context,
+                                              Widget child,
+                                              ImageChunkEvent?
+                                                  loadingProgress) {
+                                            if (loadingProgress == null) {
+                                              return child; // Image is fully loaded
+                                            }
+                                            return Center(
+                                              // Center the progress indicator
+                                              child: CircularProgressIndicator(
+                                                value: loadingProgress
+                                                        .cumulativeBytesLoaded /
+                                                    loadingProgress
+                                                        .expectedTotalBytes!,
+                                              ),
+                                            );
+                                          },
+                                          errorBuilder: (BuildContext context,
+                                              Object error,
+                                              StackTrace? stackTrace) {
+                                            debugPrint(
+                                                'Image loading error: $error'); // Print error to console
+                                            return const Icon(
+                                                Icons
+                                                    .broken_image, // Show a broken image icon on error
+                                                color: Colors.red,
+                                                size: 20);
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              currentHospital.doctorName
+                                                  .toString(),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            const Text(
+                                              'Available for consultation',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
 
                           const Divider(height: 24),
 
@@ -835,68 +953,6 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
                           ),
 
                           _buildAppointmentsSection(),
-
-                          const Divider(height: 24),
-
-                          // Doctor information (if available from detailed API)
-                          if (currentHospital.doctorID != null)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Available Doctors',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border:
-                                        Border.all(color: Colors.blue.shade200),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 20,
-                                        backgroundColor: Colors.blue.shade100,
-                                        child: const Icon(Icons.person,
-                                            color: Colors.blue, size: 20),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              currentHospital.doctorID
-                                                  .toString(),
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            const Text(
-                                              'Available for consultation',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Divider(height: 24),
-                              ],
-                            ),
 
                           // Forms section
                           const Text(
@@ -1020,14 +1076,16 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
         );
 
         // Use detailed hospital data if available, otherwise use the original
-        final currentHospital = widget.hospital;
+        final currentHospital = _detailedHospital ?? widget.hospital;
+        debugPrint('this is ' + currentHospital.assign.toString());
+        debugPrint('this is ' + currentHospital.hospitalID.toString());
 
         // Create appointment booking object
         final appointmentBooking = AppointmentBooking(
-          hospitalId: currentHospital.hospitalID.toString(),
+          hospitalId: currentHospital.doctorID.toString(),
           assignId: currentHospital.assign?.toString() ??
               'null', // Default assign ID if null
-          timeAppoint: selectedDueDate,
+          timeAppoint: selectedDueDate.toString(),
           reasonAppoint: _reasonVisitController.text,
         );
 
@@ -1073,7 +1131,7 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
       } catch (e) {
         // Close loading dialog if still mounted
         if (mounted) Navigator.of(context).pop();
-
+        debugPrint('This is response' + e.toString());
         // Show error dialog
         AwesomeDialog(
           context: context,
@@ -1159,13 +1217,6 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Text(
-                        //   DateFormat('MMM dd, yyyy - hh:mm a')
-                        //       .format(appointment.assignDate),
-                        //   style: const TextStyle(fontWeight: FontWeight.bold),
-                        // ),
-                        // Text('Status: ${appointment.status}'),
-                        // Text('Reason: ${appointment.reasonVisit}'),
                         if (appointment.reviews != null) ...[
                           const Divider(height: 16),
                           const Text('Your Review:',
