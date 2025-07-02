@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/views/about/about.dart';
+import 'package:mobile_frontend/views/doctor/d_home.dart';
+import 'package:mobile_frontend/views/doctor/mapsInsert.dart';
 import 'package:mobile_frontend/views/users/home.dart';
+import 'package:mobile_frontend/views/users/maps.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 // import 'package:mobile_frontend/views/register.dart';
 
 import 'views/authentication/login.dart';
 import 'views/authentication/register.dart';
 
-void main() {
+Future<void> main() async {
+  await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
 
@@ -38,6 +44,7 @@ class MyApp extends StatelessWidget {
       ),
       debugShowCheckedModeBanner: false,
       home: LoginPage(),
+      initialRoute: '/',
       routes: {
         //login
         '/login': (context) => LoginPage(),
@@ -47,6 +54,14 @@ class MyApp extends StatelessWidget {
 
         //main screen
         '/home': (context) => HomeScreen(userData: {}),
+        '/dhome': (context) => DHomeScreen(userData: {}),
+
+        //maps
+        '/maps': (context) => MapsForm(),
+        '/hospitalmaps': (context) => HospitalMapsScreen(),
+
+        //about
+        '/about': (context) => AboutPage(),
       },
     );
   }

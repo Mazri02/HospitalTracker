@@ -42,11 +42,26 @@ dependencies:
   geolocator: ^13.0.2
   geocoding: ^3.0.0
   dio: ^5.7.0
-  shared_preferences: ^2.0.8
+  awesome_dialog: ^3.2.1
+  url_launcher: ^6.3.1
+  flutter_dotenv: ^5.2.1
+  permission_handler: ^12.0.0+1
+  app_settings: ^6.1.1
+  flutter_secure_storage: ^9.2.4
+  image_picker: ^1.1.2
+  flutter_launcher_icons: ^0.14.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  image_path: "assets/icons/launcher_icon.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/icons/launcher_icon.png"
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -70,6 +85,7 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/videos/
+    - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

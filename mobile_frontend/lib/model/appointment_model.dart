@@ -1,78 +1,97 @@
 class Appointment {
-  final String appointmentId;
-  final String doctorId;
-  final String doctorName;
-  final String patientId;
-  final String patientName;
-  final String task;
-  final String description;
-  final DateTime dateTime;
-  final DateTime createdAt;
+  final int appointmentId;
+  final int userId;
+  final int assignId;
+  final String? reviews;
+  final double? ratings;
+  final String status;
+  final DateTime assignDate;
+  final String reasonVisit;
 
   Appointment({
     required this.appointmentId,
-    required this.doctorId,
-    required this.doctorName,
-    required this.patientId,
-    required this.patientName,
-    required this.task,
-    required this.description,
-    required this.dateTime,
-    required this.createdAt,
+    required this.userId,
+    required this.assignId,
+    this.reviews,
+    this.ratings,
+    required this.status,
+    required this.assignDate,
+    required this.reasonVisit,
   });
 
-  // Convert Appointment object to a Map
-  Map<String, dynamic> toMap() {
-    return {
-      'appointmentId': appointmentId,
-      'doctorId': doctorId,
-      'doctorName': doctorName,
-      'patientId': patientId,
-      'patientName': patientName,
-      'task': task,
-      'description': description,
-      'dateTime': dateTime.toIso8601String(),
-      'createdAt': createdAt.toIso8601String(),
-    };
-  }
-
-  // Create an Appointment object from a Map
-  factory Appointment.fromMap(Map<String, dynamic> map) {
+  factory Appointment.fromJson(Map<String, dynamic> json) {
     return Appointment(
-      appointmentId: map['appointmentId'],
-      doctorId: map['doctorId'],
-      doctorName: map['doctorName'],
-      patientId: map['patientId'],
-      patientName: map['patientName'],
-      task: map['task'],
-      description: map['description'],
-      dateTime: DateTime.parse(map['dateTime']),
-      createdAt: DateTime.parse(map['createdAt']),
+      appointmentId: json['AppoinmentID'] as int,
+      userId: json['UserID'] as int,
+      assignId: json['AssignID'] as int,
+      reviews: json['Reviews']?.toString(),
+      ratings: json['Ratings'] != null
+          ? double.tryParse(json['Ratings'].toString())
+          : null,
+      status: json['Status'] as String,
+      assignDate: DateTime.parse(json['AssignDate'] as String),
+      reasonVisit: json['ReasonVisit'] as String,
     );
   }
+}
 
-  // Create a copy of this Appointment with specified attributes changed
-  Appointment copyWith({
-    String? appointmentId,
-    String? doctorId,
-    String? doctorName,
-    String? patientId,
-    String? patientName,
-    String? task,
-    String? description,
-    DateTime? dateTime,
-    DateTime? createdAt,
-  }) {
-    return Appointment(
-      appointmentId: appointmentId ?? this.appointmentId,
-      doctorId: doctorId ?? this.doctorId,
-      doctorName: doctorName ?? this.doctorName,
-      patientId: patientId ?? this.patientId,
-      patientName: patientName ?? this.patientName,
-      task: task ?? this.task,
-      description: description ?? this.description,
-      dateTime: dateTime ?? this.dateTime,
-      createdAt: createdAt ?? this.createdAt,
-    );
+class AppointmentBooking {
+  final String hospitalId;
+  final String assignId;
+  final DateTime timeAppoint;
+  final String reasonAppoint;
+
+  AppointmentBooking({
+    required this.hospitalId,
+    required this.assignId,
+    required this.timeAppoint,
+    required this.reasonAppoint,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'timeAppoint': timeAppoint.toIso8601String(),
+        'reasonAppoint': reasonAppoint,
+      };
+}
+
+class AppointmentResponse {
+  final int status;
+  final String message;
+
+  AppointmentResponse({
+    required this.status,
+    required this.message,
+  });
+
+  factory AppointmentResponse.fromJson(Map<String, dynamic> json) {
+    try {
+      // Debug parsing
+
+      return AppointmentResponse(
+        status: json['status'] as int? ?? 0, // Default to 0 if null
+        message:
+            json['message'] as String? ?? '', // Default to empty string if null
+      );
+    } catch (e) {
+      throw FormatException(
+          'Failed to parse AppointmentResponse: ${e.toString()}');
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    try {
+      final json = {
+        'status': status,
+        'message': message,
+      };
+      return json;
+    } catch (e) {
+      throw FormatException('Failed to convert AppointmentResponse to JSON');
+    }
+  }
+
+  @override
+  String toString() {
+    return 'AppointmentResponse(status: $status, message: "$message")';
   }
 }

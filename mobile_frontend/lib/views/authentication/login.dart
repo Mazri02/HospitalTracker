@@ -10,6 +10,8 @@ import '../../utils/validator.dart';
 import 'package:mobile_frontend/services/api_service.dart';
 import 'package:mobile_frontend/views/users/home.dart';
 
+enum UserRole { patient, doctor }
+
 class LoginPage extends StatefulWidget {
   @override
   _LoginPageState createState() => _LoginPageState();
@@ -21,6 +23,7 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   final _apiService = ApiService();
   bool _isLoading = false;
+  UserRole _selectedRole = UserRole.patient;
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -36,34 +39,58 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
 
-    // try {
-    //   final response = await _apiService.login(
-    //     _emailController.text,
-    //     _passwordController.text,
-    //   );
+    try {
+      // Print the values before making the API call
+      debugPrint('Email entered: ${_emailController.text}');
+      debugPrint('Password entered: ${_passwordController.text}');
+      debugPrint('Selected role: $_selectedRole');
 
-    //   if (response['status'] == 200) {
-    //     ScaffoldMessenger.of(context).showSnackBar(
-    //       SnackBar(content: Text(response['message'] ?? 'Login successful')),
-    //     );
+      if (_selectedRole == UserRole.patient) {
+        await _apiService.loginAsUser(
+          _emailController.text,
+          _passwordController.text,
+          context,
+        );
+      } else {
+        await _apiService.loginAsDoctor(
+          _emailController.text,
+          _passwordController.text,
+          context,
+        );
+      }
 
-    //     Navigator.pushReplacement(
-    //       context,
-    //       MaterialPageRoute(
-    //         builder: (context) => DHomeScreen(
-    //           // userData: response['data'],
-    //           userData: {},
-    //         ),
-    //       ),
-    //     );
-    //   } else {
-    //     ScaffoldMessenger.of(context).showSnackBar(
-    //       SnackBar(content: Text(response['error'] ?? 'Login failed')),
-    //     );
-    //   }
-    // } finally {
-    //   setState(() => _isLoading = false);
-    // }
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Login successful')),
+      );
+    } catch (e) {
+      // Print the error for debugging
+      debugPrint('Login error: $e');
+
+      // Handle different types of exceptions
+      String errorMessage = 'Login failed';
+
+      if (e is BadRequestException) {
+        errorMessage = e.message;
+      } else if (e is UnauthorizedException) {
+        errorMessage = e.message;
+      } else if (e is ServerException) {
+        errorMessage = e.message;
+      } else if (e is FormatException) {
+        errorMessage = e.toString();
+      } else {
+        errorMessage = e.toString();
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -73,7 +100,7 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
             child: Form(
               key: _formKey,
               child: Container(
@@ -94,16 +121,77 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-                    SizedBox(height: 40),
+                    SizedBox(height: 30),
+
+                    // Role Selection
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                'Login as:',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: RadioListTile<UserRole>(
+                                    title: Text(
+                                      'Patient',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    value: UserRole.patient,
+                                    groupValue: _selectedRole,
+                                    onChanged: (UserRole? value) {
+                                      setState(() {
+                                        _selectedRole = value!;
+                                      });
+                                    },
+                                    activeColor: Colors.white,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: RadioListTile<UserRole>(
+                                    title: Text(
+                                      'Doctor',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    value: UserRole.doctor,
+                                    groupValue: _selectedRole,
+                                    onChanged: (UserRole? value) {
+                                      setState(() {
+                                        _selectedRole = value!;
+                                      });
+                                    },
+                                    activeColor: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 30),
                     FieldBox(
                       label: 'Email',
                       controller: _emailController,
                       validator: Validator.validateEmail,
                       onChanged: (value) {},
                       textCapitalization: TextCapitalization.none,
-
-                      //IF IN MOBILE THAN USE THIS
-                      // keyboardType: TextInputType.emailAddress,
                     ),
                     SizedBox(height: 20),
                     FieldBox(
@@ -115,10 +203,14 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     SizedBox(height: 40),
                     _isLoading
-                        ? CircularProgressIndicator()
+                        ? CircularProgressIndicator(
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          )
                         : SubmitButton(
                             onPressed: _login,
-                            text: 'Login',
+                            text:
+                                'Login as ${_selectedRole == UserRole.patient ? "Patient" : "Doctor"}',
                             color: Colors.deepPurple,
                           ),
                     SizedBox(height: 20),
@@ -139,5 +231,12 @@ class _LoginPageState extends State<LoginPage> {
       ),
       resizeToAvoidBottomInset: true,
     );
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 }
