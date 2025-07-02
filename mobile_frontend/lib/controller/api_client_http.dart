@@ -155,16 +155,17 @@ class ApiClient {
     }
   }
 
-  //VIEW HOSPITAL BY ID
-  Future<dynamic> viewHospitalById(String id) async {
+//VIEW HOSPITAL BY ID
+  Future<Hospital> viewHospitalById(String id) async {
     var authToken = await storage.read(key: 'token');
     try {
       final uri = Uri.parse('$baseUrl/ViewHospital/$id');
-      debugPrint('Uri view hopital' + uri.toString());
+      debugPrint('Uri view hospital' + uri.toString());
       final response = await http.get(
         uri,
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type':
+              'application/json,text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
           'Authorization': 'Bearer $authToken',
         },
       );
@@ -173,7 +174,16 @@ class ApiClient {
 
       switch (response.statusCode) {
         case 200:
-          return Hospital.fromJson(json.decode(response.body));
+          // Check if responseData is a list or single object
+          if (responseData is List && responseData.isNotEmpty) {
+            // If it's a list, take the first hospital
+            return Hospital.fromJson(responseData.first);
+          } else if (responseData is Map<String, dynamic>) {
+            // If it's a single object, parse it directly
+            return Hospital.fromJson(responseData);
+          } else {
+            throw FormatException('Invalid hospital data format');
+          }
         case 400:
           throw BadRequestException(
             responseData['message']?.toString() ?? 'Invalid hospital data',
@@ -181,7 +191,7 @@ class ApiClient {
         case 401:
           throw UnauthorizedException(
             responseData['message']?.toString() ??
-                'Please login to book appointments',
+                'Please login to view hospital details',
           );
         case 500:
           throw ServerException(
@@ -193,7 +203,7 @@ class ApiClient {
           );
       }
     } catch (e) {
-      throw Exception('Failed to fetch hospitals: ${e.toString()}');
+      throw Exception('Failed to fetch hospital details: ${e.toString()}');
     }
   }
 
@@ -240,10 +250,10 @@ class ApiClient {
     required AppointmentBooking booking,
   }) async {
     var authToken = await storage.read(key: 'token');
-    var userId = await storage.read(key: 'userId');
+
     try {
-      final uri =
-          Uri.parse('$baseUrl/BookAppointment/${booking.hospitalId}/$userId');
+      final uri = Uri.parse(
+          '$baseUrl/BookAppointment/${booking.hospitalId}/${booking.assignId}');
 
       debugPrint(uri.toString());
 
@@ -258,7 +268,7 @@ class ApiClient {
           )
           .timeout(const Duration(seconds: 10));
 
-      final responseData = json.decode(response.body) as Map<String, dynamic>;
+      final responseData = json.decode(response.body);
 
       switch (response.statusCode) {
         case 200:
