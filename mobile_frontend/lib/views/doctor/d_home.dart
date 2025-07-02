@@ -115,13 +115,15 @@ class _DHomeScreenState extends State<DHomeScreen> {
       message: 'Are you sure you want to logout?',
     );
 
+    final apiService = ApiService();
+
     if (continueLogout == true) {
-      final apiService = ApiService();
       try {
-        // await apiService.logout(userId, context);
+        await apiService.logout(context);
+        debugPrint('login success');
       } catch (e) {
         // Handle error
-        print('Logout failed: $e');
+        debugPrint('Logout failed: $e');
       }
       // Use the navigation utility instead
       toNavigate.gotoLogin(context);

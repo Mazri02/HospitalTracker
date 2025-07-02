@@ -159,8 +159,10 @@ class ApiClient {
   Future<dynamic> viewHospitalById(String id) async {
     var authToken = await storage.read(key: 'token');
     try {
+      final uri = Uri.parse('$baseUrl/ViewHospital/$id');
+      debugPrint('Uri view hopital' + uri.toString());
       final response = await http.get(
-        Uri.parse('$baseUrl/ViewHospital/$id'),
+        uri,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $authToken',
@@ -195,14 +197,55 @@ class ApiClient {
     }
   }
 
+// READ REVIEWS FOR USER'S APPOINTMENTS
+  Future<List<Appointment>> readAppointmentsReview(String hospitalId) async {
+    var authToken = await storage.read(key: 'token');
+    debugPrint('Fetching appointments for user $hospitalId');
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/AllAppointment/$hospitalId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      debugPrint('Appointments response: ${response.statusCode}');
+      final responseData = json.decode(response.body);
+
+      switch (response.statusCode) {
+        case 200:
+          if (responseData is List) {
+            return responseData
+                .map((json) => Appointment.fromJson(json))
+                .toList();
+          }
+          throw FormatException(
+              'Expected array but got ${responseData.runtimeType}');
+        case 404:
+          return []; // Return empty list if no appointments found
+        default:
+          throw Exception(
+              'Failed to load appointments: ${responseData['message']}');
+      }
+    } catch (e) {
+      debugPrint('Error reading appointments: $e');
+      throw Exception('Failed to fetch appointments: ${e.toString()}');
+    }
+  }
+
   //BOOK APPOINMENT
   Future<AppointmentResponse> bookAppointment({
     required AppointmentBooking booking,
   }) async {
     var authToken = await storage.read(key: 'token');
+    var userId = await storage.read(key: 'userId');
     try {
-      final uri = Uri.parse(
-          '$baseUrl/BookAppointment/${booking.hospitalId}/${booking.assignId}');
+      final uri =
+          Uri.parse('$baseUrl/BookAppointment/${booking.hospitalId}/$userId');
+
+      debugPrint(uri.toString());
 
       final response = await http
           .post(

@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mobile_frontend/controller/api_client_http.dart';
 import 'package:mobile_frontend/model/appointment_model.dart';
@@ -497,6 +498,11 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
   final _formKey = GlobalKey<FormState>();
   DateTime selectedDueDate = DateTime.now().add(const Duration(days: 1));
 
+  //Appointment Part
+  List<Appointment> _userAppointments = [];
+  bool _loadingAppointments = false;
+  String? _appointmentsError;
+
   // Add state variables for loading and detailed hospital data
   bool _isLoading = true;
   Hospital? _detailedHospital;
@@ -506,6 +512,34 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
   void initState() {
     super.initState();
     _loadHospitalDetails();
+    _loadUserAppointments();
+  }
+
+  //Add appointment review method
+  Future<void> _loadUserAppointments() async {
+    try {
+      setState(() {
+        _loadingAppointments = true;
+        _appointmentsError = null;
+      });
+
+      final appointments = await ApiClient()
+          .readAppointmentsReview(widget.hospital.hospitalID.toString());
+
+      setState(() {
+        // Filter appointments for this hospital only
+        _userAppointments = appointments
+            .where((appt) => appt.assignId == widget.hospital.assign)
+            .toList();
+        _loadingAppointments = false;
+      });
+    } catch (e) {
+      setState(() {
+        _appointmentsError = e.toString();
+        _loadingAppointments = false;
+      });
+      debugPrint('Error loading appointments: $e');
+    }
   }
 
   // Add method to load detailed hospital data
@@ -800,10 +834,12 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
                             ),
                           ),
 
+                          _buildAppointmentsSection(),
+
                           const Divider(height: 24),
 
                           // Doctor information (if available from detailed API)
-                          if (currentHospital.doctor != null)
+                          if (currentHospital.doctorID != null)
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -838,7 +874,8 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              currentHospital.doctor.toString(),
+                                              currentHospital.doctorID
+                                                  .toString(),
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 16,
@@ -983,19 +1020,21 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
         );
 
         // Use detailed hospital data if available, otherwise use the original
-        final currentHospital = _detailedHospital ?? widget.hospital;
+        final currentHospital = widget.hospital;
 
         // Create appointment booking object
         final appointmentBooking = AppointmentBooking(
           hospitalId: currentHospital.hospitalID.toString(),
           assignId: currentHospital.assign?.toString() ??
-              '1', // Default assign ID if null
+              'null', // Default assign ID if null
           timeAppoint: selectedDueDate,
           reasonAppoint: _reasonVisitController.text,
         );
 
         // Call API to book appointment
         final apiClient = ApiClient();
+
+        debugPrint(appointmentBooking.toString());
 
         final response =
             await apiClient.bookAppointment(booking: appointmentBooking);
@@ -1052,5 +1091,102 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
   void dispose() {
     _reasonVisitController.dispose();
     super.dispose();
+  }
+
+  Widget _buildAppointmentsSection() {
+    if (_loadingAppointments) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_appointmentsError != null) {
+      return Center(
+        child: Text(
+          'Failed to load appointments: $_appointmentsError',
+          style: const TextStyle(color: Colors.red),
+        ),
+      );
+    }
+
+    if (_userAppointments.isEmpty) {
+      return Center(
+        child: Card(
+          elevation: 2,
+          margin: const EdgeInsets.symmetric(
+            vertical: 8,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.feedback,
+                  size: 48,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'No Review Found',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const Text(
+          'Your Appointments',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ..._userAppointments
+            .map((appointment) => Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Text(
+                        //   DateFormat('MMM dd, yyyy - hh:mm a')
+                        //       .format(appointment.assignDate),
+                        //   style: const TextStyle(fontWeight: FontWeight.bold),
+                        // ),
+                        // Text('Status: ${appointment.status}'),
+                        // Text('Reason: ${appointment.reasonVisit}'),
+                        if (appointment.reviews != null) ...[
+                          const Divider(height: 16),
+                          const Text('Your Review:',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(appointment.reviews!),
+                          if (appointment.ratings != null)
+                            Row(
+                              children: [
+                                const Icon(Icons.star,
+                                    size: 16, color: Colors.amber),
+                                Text(
+                                    ' ${appointment.ratings!.toStringAsFixed(1)}/5'),
+                              ],
+                            ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ))
+            .toList(),
+      ],
+    );
   }
 }

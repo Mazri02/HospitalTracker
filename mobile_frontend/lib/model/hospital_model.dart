@@ -7,8 +7,10 @@ class Hospital {
   final int? totalAppointments;
   final int? totalReviews;
   final double? ratings;
-  final dynamic assign;
-  final dynamic doctor;
+  final int? assign;
+  final int? doctorID;
+  final dynamic doctorPict;
+  final String? doctorName;
 
   Hospital({
     this.hospitalID,
@@ -20,7 +22,9 @@ class Hospital {
     this.totalReviews,
     this.ratings,
     this.assign,
-    this.doctor,
+    this.doctorID,
+    this.doctorPict,
+    this.doctorName,
   });
 
   factory Hospital.fromJson(Map<String, dynamic> json) {
@@ -33,8 +37,10 @@ class Hospital {
       totalAppointments: tryParseInt(json['Total_Appointments']),
       totalReviews: tryParseInt(json['Total_Reviews']),
       ratings: tryParseDouble(json['Ratings']),
-      assign: json['assign'],
-      doctor: json['doctor'],
+      assign: tryParseInt(json['assign']),
+      doctorID: tryParseInt(json['doctorID']),
+      doctorPict: json['doctorPict'],
+      doctorName: json['doctorName']?.toString(),
     );
   }
 
