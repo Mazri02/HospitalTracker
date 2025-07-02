@@ -34,8 +34,7 @@ class MapsFormState extends State<MapsForm> {
   late final TextEditingController LocationController = TextEditingController();
   late final TextEditingController NameController = TextEditingController();
   final MapController _mapController = MapController();
-  final ipAddress =
-      'http://10.82.187.196:8000'; // Tukar IP Sendiri Time Present
+  final ipAddress = 'http://192.168.0.11:8000'; // Tukar IP Sendiri Time Present
 
   Future<void> fetchLocation(String query) async {
     final String url =
