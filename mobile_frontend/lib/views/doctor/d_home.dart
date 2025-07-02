@@ -32,6 +32,7 @@ class _DHomeScreenState extends State<DHomeScreen> {
   String longitude = "Fetching...";
   String address = "Fetching address...";
   final LocationService _locationService = LocationService();
+
   final ipAddress = dotenv.env['BASE_URL']; // Tukar IP Sendiri Time Present
 
   @override

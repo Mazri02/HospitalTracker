@@ -29,6 +29,15 @@ class _LoginPageState extends State<LoginPage> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DHomeScreen(
+          // userData: response['data'],
+          userData: {},
+        ),
+      ),
+    );
 
     try {
       // Print the values before making the API call
