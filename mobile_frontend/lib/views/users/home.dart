@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:gap/gap.dart';
@@ -480,7 +478,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: Colors.grey[300],
-                  backgroundImage: AssetImage('assets/images/hospital-logo.png'),
+                  backgroundImage:
+                      AssetImage('assets/images/hospital-logo.png'),
                   onBackgroundImageError: (exception, stackTrace) {},
                   child: hospital.hospitalName != null
                       ? null
@@ -533,7 +532,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             Gap(4),
                             Text(
                               '${hospital.ratings!.toStringAsFixed(1)} (${hospital.totalReviews ?? 0} reviews)',
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                              style: TextStyle(
+                                  fontSize: 11, color: Colors.grey[600]),
                             ),
                           ],
                         ),
@@ -550,8 +550,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ElevatedButton(
                       onPressed: () => _showBookingDialog(hospital),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(255, 150, 53, 220),
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        backgroundColor:
+                            const Color.fromARGB(255, 150, 53, 220),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -574,8 +576,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-
 
   Widget _buildBottomNavigation() {
     return Container(

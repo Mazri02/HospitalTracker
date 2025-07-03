@@ -98,7 +98,7 @@ class ApiClient {
       print('Response Status Code: ${response.statusCode}');
       print('Response Body: ${response.body}');
       final responseData = json.decode(response.body);
-      
+
       // Debug: Print first hospital data if available
       if (responseData is List && responseData.isNotEmpty) {
         print('First hospital raw data: ${responseData[0]}');
@@ -162,16 +162,17 @@ class ApiClient {
     }
   }
 
-  //VIEW HOSPITAL BY ID
-  Future<dynamic> viewHospitalById(String id) async {
+//VIEW HOSPITAL BY ID
+  Future<Hospital> viewHospitalById(String id) async {
     var authToken = await storage.read(key: 'token');
     try {
       final uri = Uri.parse('$baseUrl/ViewHospital/$id');
-      debugPrint('Uri view hopital' + uri.toString());
+      debugPrint('Uri view hospital' + uri.toString());
       final response = await http.get(
         uri,
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type':
+              'application/json,text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
           'Authorization': 'Bearer $authToken',
         },
       );
@@ -180,7 +181,16 @@ class ApiClient {
 
       switch (response.statusCode) {
         case 200:
-          return Hospital.fromJson(json.decode(response.body));
+          // Check if responseData is a list or single object
+          if (responseData is List && responseData.isNotEmpty) {
+            // If it's a list, take the first hospital
+            return Hospital.fromJson(responseData.first);
+          } else if (responseData is Map<String, dynamic>) {
+            // If it's a single object, parse it directly
+            return Hospital.fromJson(responseData);
+          } else {
+            throw FormatException('Invalid hospital data format');
+          }
         case 400:
           throw BadRequestException(
             responseData['message']?.toString() ?? 'Invalid hospital data',
@@ -188,7 +198,7 @@ class ApiClient {
         case 401:
           throw UnauthorizedException(
             responseData['message']?.toString() ??
-                'Please login to book appointments',
+                'Please login to view hospital details',
           );
         case 500:
           throw ServerException(
@@ -200,7 +210,7 @@ class ApiClient {
           );
       }
     } catch (e) {
-      throw Exception('Failed to fetch hospitals: ${e.toString()}');
+      throw Exception('Failed to fetch hospital details: ${e.toString()}');
     }
   }
 
@@ -247,18 +257,18 @@ class ApiClient {
     required AppointmentBooking booking,
   }) async {
     var authToken = await storage.read(key: 'token');
-    var userId = await storage.read(key: 'userId');
+
     try {
-      final uri =
-          Uri.parse('$baseUrl/BookAppointment/$userId/${booking.assignId}');
+      final uri = Uri.parse(
+          '$baseUrl/BookAppointment/${booking.hospitalId}/${booking.assignId}');
 
       print('=== API BOOKING REQUEST ===');
       print('Base URL: $baseUrl');
       print('Full Booking URL: $uri');
-      print('User ID: $userId');
       print('Assign ID: ${booking.assignId}');
       print('Booking JSON: ${json.encode(booking.toJson())}');
-      print('Auth Token: ${authToken?.substring(0, 20)}...'); // Show only first 20 chars for security
+      print(
+          'Auth Token: ${authToken?.substring(0, 20)}...'); // Show only first 20 chars for security
       print('==========================');
 
       final response = await http
@@ -272,18 +282,7 @@ class ApiClient {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('=== API BOOKING RESPONSE ===');
-      print('Response Status: ${response.statusCode}');
-      print('Response Headers: ${response.headers}');
-      print('Response Body: ${response.body}');
-      print('============================');
-
-      // Check if response is HTML instead of JSON
-      if (response.body.trim().startsWith('<!DOCTYPE') || response.body.trim().startsWith('<html')) {
-        throw Exception('Server returned HTML instead of JSON. Status: ${response.statusCode}. Possible reasons: endpoint not found, server error, or authentication issue.');
-      }
-
-      final responseData = json.decode(response.body) as Map<String, dynamic>;
+      final responseData = json.decode(response.body);
 
       switch (response.statusCode) {
         case 200:
@@ -425,9 +424,12 @@ class ApiClient {
       switch (response.statusCode) {
         case 200:
           if (responseData is List) {
-            return responseData.map((json) => Appointment.fromJson(json)).toList();
+            return responseData
+                .map((json) => Appointment.fromJson(json))
+                .toList();
           }
-          throw FormatException('Expected array but got ${responseData.runtimeType}');
+          throw FormatException(
+              'Expected array but got ${responseData.runtimeType}');
         case 404:
           return [];
         case 401:
@@ -464,9 +466,12 @@ class ApiClient {
       switch (response.statusCode) {
         case 200:
           if (responseData is List) {
-            return responseData.map((json) => Appointment.fromJson(json)).toList();
+            return responseData
+                .map((json) => Appointment.fromJson(json))
+                .toList();
           }
-          throw FormatException('Expected array but got ${responseData.runtimeType}');
+          throw FormatException(
+              'Expected array but got ${responseData.runtimeType}');
         case 404:
           return [];
         case 401:
@@ -521,7 +526,8 @@ class ApiClient {
   }) async {
     var authToken = await storage.read(key: 'token');
     try {
-      final uri = Uri.parse('$baseUrl/UpdateAppointment/$appointmentId/$status');
+      final uri =
+          Uri.parse('$baseUrl/UpdateAppointment/$appointmentId/$status');
 
       final response = await http.put(
         uri,

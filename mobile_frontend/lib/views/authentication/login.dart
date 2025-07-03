@@ -1,14 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
-import 'package:mobile_frontend/utils/navigator.dart';
-import 'package:mobile_frontend/views/doctor/d_home.dart';
 import 'package:mobile_frontend/widget/customButton.dart';
 import 'package:mobile_frontend/widget/fieldbox.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../../utils/validator.dart';
 import 'package:mobile_frontend/services/api_service.dart';
-import 'package:mobile_frontend/views/users/home.dart';
 
 enum UserRole { patient, doctor }
 
@@ -25,19 +19,11 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   UserRole _selectedRole = UserRole.patient;
 
+  //login
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    // Navigator.pushReplacement(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) => HomeScreen(
-    //       // userData: response['data'],
-    //       userData: {},
-    //     ),
-    //   ),
-    // );
 
     try {
       // Print the values before making the API call

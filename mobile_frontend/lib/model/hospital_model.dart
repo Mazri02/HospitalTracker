@@ -5,13 +5,14 @@ class Hospital {
   final String? hospitalName;
   final double? hospitalLang;
   final double? hospitalLong;
+  final dynamic hospitalPict;
   final String? hospitalAddress;
   final int? totalAppointments;
   final int? totalReviews;
   final double? ratings;
-  final dynamic assign;  // Changed from int? to dynamic to handle object
-  final dynamic doctor;  // Changed to handle doctor object
-  final int? doctorID;   // Keep for backward compatibility
+  final dynamic assign; // Changed from int? to dynamic to handle object
+  final dynamic doctor; // Changed to handle doctor object
+  final int? doctorID; // Keep for backward compatibility
   final dynamic doctorPict;
   final String? doctorName; // Keep for backward compatibility
 
@@ -20,6 +21,7 @@ class Hospital {
     this.hospitalName,
     this.hospitalLang,
     this.hospitalLong,
+    this.hospitalPict,
     this.hospitalAddress,
     this.totalAppointments,
     this.totalReviews,
@@ -37,18 +39,25 @@ class Hospital {
       hospitalName: json['HospitalName']?.toString(),
       hospitalLang: tryParseDouble(json['HospitalLang']),
       hospitalLong: tryParseDouble(json['HospitalLong']),
+      hospitalPict: json['HospitalPicture'],
       hospitalAddress: json['HospitalAddress']?.toString(),
       totalAppointments: tryParseInt(json['Total_Appointments']),
       totalReviews: tryParseInt(json['Total_Reviews']),
       ratings: tryParseDouble(json['Ratings']),
-      assign: json['assign'], // Keep as dynamic object
+      assign: tryParseInt(json['AssignID']),
       doctor: json['doctor'], // Keep as dynamic object
-      doctorID: tryParseInt(json['doctorID']) ?? 
-                (json['doctor'] is Map ? tryParseInt(json['doctor']['doctorID']) ?? tryParseInt(json['doctor']['id']) : null),
-      doctorPict: json['doctorPict'] ?? 
-                  (json['doctor'] is Map ? json['doctor']['doctorPict'] : null),
-      doctorName: json['doctorName']?.toString() ?? 
-                  (json['doctor'] is Map ? json['doctor']['doctorName']?.toString() ?? json['doctor']['name']?.toString() : null),
+      doctorID: tryParseInt(json['doctorID']) ??
+          (json['doctor'] is Map
+              ? tryParseInt(json['doctor']['doctorID']) ??
+                  tryParseInt(json['doctor']['id'])
+              : null),
+      doctorPict: json['doctorPict'] ??
+          (json['doctor'] is Map ? json['doctor']['doctorPict'] : null),
+      doctorName: json['doctorName']?.toString() ??
+          (json['doctor'] is Map
+              ? json['doctor']['doctorName']?.toString() ??
+                  json['doctor']['name']?.toString()
+              : null),
     );
   }
 
