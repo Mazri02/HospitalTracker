@@ -45,19 +45,10 @@ class Hospital {
       totalReviews: tryParseInt(json['Total_Reviews']),
       ratings: tryParseDouble(json['Ratings']),
       assign: tryParseInt(json['AssignID']),
-      doctor: json['doctor'], // Keep as dynamic object
-      doctorID: tryParseInt(json['doctorID']) ??
-          (json['doctor'] is Map
-              ? tryParseInt(json['doctor']['doctorID']) ??
-                  tryParseInt(json['doctor']['id'])
-              : null),
-      doctorPict: json['doctorPict'] ??
-          (json['doctor'] is Map ? json['doctor']['doctorPict'] : null),
-      doctorName: json['doctorName']?.toString() ??
-          (json['doctor'] is Map
-              ? json['doctor']['doctorName']?.toString() ??
-                  json['doctor']['name']?.toString()
-              : null),
+      doctor: json['Doctor'], // Keep as dynamic object
+      doctorID: tryParseInt(json['DoctorID']),
+      doctorPict: json['DoctorPict'],
+      doctorName: json['DoctorName']?.toString(),
     );
   }
 

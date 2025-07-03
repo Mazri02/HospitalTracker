@@ -1080,11 +1080,15 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
         debugPrint('this is ' + currentHospital.assign.toString());
         debugPrint('this is ' + currentHospital.hospitalID.toString());
 
+        // Validate assign ID before booking
+        if (currentHospital.assign == null) {
+          throw Exception('No doctor assigned to this hospital. Cannot book appointment.');
+        }
+
         // Create appointment booking object
         final appointmentBooking = AppointmentBooking(
-          hospitalId: currentHospital.doctorID.toString(),
-          assignId: currentHospital.assign?.toString() ??
-              'null', // Default assign ID if null
+          hospitalId: currentHospital.hospitalID.toString(), // Fixed: Use hospitalID instead of doctorID
+          assignId: currentHospital.assign.toString(), // Removed fallback to 'null' string
           timeAppoint: selectedDueDate.toString(),
           reasonAppoint: _reasonVisitController.text,
         );

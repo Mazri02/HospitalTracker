@@ -265,10 +265,10 @@ class ApiClient {
       print('=== API BOOKING REQUEST ===');
       print('Base URL: $baseUrl');
       print('Full Booking URL: $uri');
+      print('Hospital ID: ${booking.hospitalId}');
       print('Assign ID: ${booking.assignId}');
       print('Booking JSON: ${json.encode(booking.toJson())}');
-      print(
-          'Auth Token: ${authToken?.substring(0, 20)}...'); // Show only first 20 chars for security
+      print('Auth Token: ${authToken?.substring(0, 20)}...'); // Show only first 20 chars for security
       print('==========================');
 
       final response = await http
@@ -282,7 +282,39 @@ class ApiClient {
           )
           .timeout(const Duration(seconds: 10));
 
-      final responseData = json.decode(response.body);
+      print('=== API BOOKING RESPONSE ===');
+      print('Status Code: ${response.statusCode}');
+      print('Response Headers: ${response.headers}');
+      print('Raw Response Body: ${response.body}');
+      print('============================');
+
+      // Check if response is HTML (error page)
+      if (response.body.trim().startsWith('<!DOCTYPE') || 
+          response.body.trim().startsWith('<html')) {
+        throw Exception(
+          'Server returned HTML error page instead of JSON. '
+          'Status: ${response.statusCode}. '
+          'This usually means the API endpoint doesn\'t exist or there\'s a server error.'
+        );
+      }
+
+      // Check if response body is empty
+      if (response.body.trim().isEmpty) {
+        throw Exception(
+          'Server returned empty response. Status: ${response.statusCode}'
+        );
+      }
+
+      // Try to decode JSON
+      Map<String, dynamic> responseData;
+      try {
+        responseData = json.decode(response.body);
+      } catch (e) {
+        throw Exception(
+          'Failed to parse JSON response. Status: ${response.statusCode}. '
+          'Response: ${response.body.length > 200 ? response.body.substring(0, 200) + "..." : response.body}'
+        );
+      }
 
       switch (response.statusCode) {
         case 200:
@@ -296,16 +328,21 @@ class ApiClient {
             responseData['message']?.toString() ??
                 'Please login to book appointments',
           );
+        case 404:
+          throw Exception(
+            'Booking endpoint not found. Please check if the API endpoint exists.'
+          );
         case 500:
           throw ServerException(
             responseData['message']?.toString() ?? 'Internal server error',
           );
         default:
           throw Exception(
-            'Unexpected status code: ${response.statusCode}',
+            'Unexpected status code: ${response.statusCode}. Response: ${responseData['message'] ?? "No message"}',
           );
       }
     } catch (e) {
+      debugPrint('BookAppointment Error: $e');
       throw Exception('Failed to book appointment: ${e.toString()}');
     }
   }
