@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:mobile_frontend/views/users/home.dart';
+import 'package:mobile_frontend/views/doctor/d_home.dart';
 import 'dart:convert';
 
 class ApiService {
@@ -59,7 +61,14 @@ class ApiService {
         await storage.write(key: 'userId', value: userId.toString());
         await storage.write(key: 'role', value: role);
 
-        Navigator.pushReplacementNamed(context, '/home');
+        // Navigate to home with proper user data
+        debugPrint('Navigating to home with userData: ${responseData['data']}');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(userData: responseData['data']),
+          ),
+        );
       }
       // Handle error cases
       else {
@@ -129,8 +138,14 @@ class ApiService {
         await storage.write(key: 'userId', value: userId.toString());
         await storage.write(key: 'role', value: role);
 
-        await storage.write(key: 'token', value: token);
-        Navigator.pushReplacementNamed(context, '/dhome');
+        // Navigate to doctor home with proper user data
+        debugPrint('Navigating to doctor home with userData: ${responseData['data']}');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DHomeScreen(userData: responseData['data']),
+          ),
+        );
       } else {
         final error = responseData['error'] ??
             responseData['message'] ??
@@ -291,13 +306,28 @@ class ApiService {
   //  ------------------------ Profile -------------------------------------------
 
   Future<Map<String, dynamic>> deleteUser(int userId) async {
+    final storage = FlutterSecureStorage();
+    
     try {
+      // Get stored authentication token
+      final token = await storage.read(key: 'token');
+      if (token == null) {
+        return {
+          'status': 401,
+          'error': 'No authentication token found',
+        };
+      }
+
+      final url = Uri.parse('$baseUrl/DeleteUser/$userId/user');
+      print('Delete user URL: $url'); // Debug print
+
       final response = await http.get(
-        Uri.parse('$baseUrl/api/DeleteUser').replace(
-          queryParameters: {
-            'UserID': userId.toString(),
-          },
-        ),
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
       );
 
       return json.decode(response.body);
@@ -315,22 +345,49 @@ class ApiService {
     required String email,
     String? password,
   }) async {
+    final storage = FlutterSecureStorage();
+    
     try {
-      final queryParams = {
-        'UserID': userId.toString(),
+      // Get stored authentication token
+      final token = await storage.read(key: 'token');
+      if (token == null) {
+        return {
+          'status': 401,
+          'error': 'No authentication token found',
+        };
+      }
+
+      final url = Uri.parse('$baseUrl/EditUser/$userId/user');
+      print('Edit user URL: $url'); // Debug print
+      print('Edit user token: ${token.substring(0, 10)}...'); // Debug print (partial token)
+
+      // Try form data format instead of JSON
+      final body = <String, String>{
         'UserName': name,
         'UserEmail': email,
       };
 
       if (password != null) {
-        queryParams['UserPassword'] = password;
+        body['UserPassword'] = password;
       }
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/EditUser').replace(
-          queryParameters: queryParams,
-        ),
+      print('Edit user request body: $body'); // Debug print
+
+      final headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+      
+      print('Edit user headers: $headers'); // Debug print
+
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: body, // Send as form data instead of JSON
       );
+
+      print('Edit user response status: ${response.statusCode}');
+      print('Edit user response body: ${response.body}');
 
       return json.decode(response.body);
     } catch (e) {
@@ -342,20 +399,28 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getUserData(int userId) async {
+    final storage = FlutterSecureStorage();
+    
     try {
-      final url = Uri.parse('$baseUrl/api/GetUserData').replace(
-        queryParameters: {
-          'UserID': userId.toString(),
-        },
-      );
+      // Get stored authentication token
+      final token = await storage.read(key: 'token');
+      if (token == null) {
+        return {
+          'status': 401,
+          'error': 'No authentication token found',
+        };
+      }
 
+      final url = Uri.parse('$baseUrl/GetUserData/$userId/user');
       print('Requesting URL: $url'); // Debug print
+      print('Using token: ${token.substring(0, 10)}...'); // Debug print (partial token)
 
       final response = await http.get(
         url,
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
         },
       );
 

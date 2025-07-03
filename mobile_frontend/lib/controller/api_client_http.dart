@@ -94,9 +94,16 @@ class ApiClient {
           'Authorization': 'Bearer $authToken',
         },
       ).timeout(const Duration(seconds: 15));
-      debugPrint('Response Status Code: ${response.statusCode}');
-      debugPrint('Response Body: ${response.body}');
+      print('=== HOSPITAL API RESPONSE ===');
+      print('Response Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
       final responseData = json.decode(response.body);
+      
+      // Debug: Print first hospital data if available
+      if (responseData is List && responseData.isNotEmpty) {
+        print('First hospital raw data: ${responseData[0]}');
+      }
+      print('=============================');
       switch (response.statusCode) {
         case 200:
           try {
@@ -243,9 +250,16 @@ class ApiClient {
     var userId = await storage.read(key: 'userId');
     try {
       final uri =
-          Uri.parse('$baseUrl/BookAppointment/${booking.hospitalId}/$userId');
+          Uri.parse('$baseUrl/BookAppointment/$userId/${booking.assignId}');
 
-      debugPrint(uri.toString());
+      print('=== API BOOKING REQUEST ===');
+      print('Base URL: $baseUrl');
+      print('Full Booking URL: $uri');
+      print('User ID: $userId');
+      print('Assign ID: ${booking.assignId}');
+      print('Booking JSON: ${json.encode(booking.toJson())}');
+      print('Auth Token: ${authToken?.substring(0, 20)}...'); // Show only first 20 chars for security
+      print('==========================');
 
       final response = await http
           .post(
@@ -257,6 +271,17 @@ class ApiClient {
             body: json.encode(booking.toJson()),
           )
           .timeout(const Duration(seconds: 10));
+
+      print('=== API BOOKING RESPONSE ===');
+      print('Response Status: ${response.statusCode}');
+      print('Response Headers: ${response.headers}');
+      print('Response Body: ${response.body}');
+      print('============================');
+
+      // Check if response is HTML instead of JSON
+      if (response.body.trim().startsWith('<!DOCTYPE') || response.body.trim().startsWith('<html')) {
+        throw Exception('Server returned HTML instead of JSON. Status: ${response.statusCode}. Possible reasons: endpoint not found, server error, or authentication issue.');
+      }
 
       final responseData = json.decode(response.body) as Map<String, dynamic>;
 
@@ -283,6 +308,286 @@ class ApiClient {
       }
     } catch (e) {
       throw Exception('Failed to book appointment: ${e.toString()}');
+    }
+  }
+
+  // EDIT USER
+  Future<Map<String, dynamic>> editUser({
+    required String userId,
+    required String userType,
+    required String userName,
+    required String userEmail,
+    String? userPassword,
+  }) async {
+    var authToken = await storage.read(key: 'token');
+    try {
+      final uri = Uri.parse('$baseUrl/EditUser/$userId/$userType');
+      Map<String, dynamic> body = {
+        'UserName': userName,
+        'UserEmail': userEmail,
+      };
+      if (userPassword != null && userPassword.isNotEmpty) {
+        body['UserPassword'] = userPassword;
+      }
+
+      final response = await http.put(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: json.encode(body),
+      );
+
+      final responseData = json.decode(response.body);
+
+      switch (response.statusCode) {
+        case 200:
+          return responseData;
+        case 400:
+          throw BadRequestException(
+            responseData['message']?.toString() ?? 'Invalid user data',
+          );
+        case 401:
+          throw UnauthorizedException(
+            responseData['message']?.toString() ?? 'Unauthorized access',
+          );
+        case 500:
+          throw ServerException(
+            responseData['message']?.toString() ?? 'Internal server error',
+          );
+        default:
+          throw Exception('Unexpected status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to edit user: ${e.toString()}');
+    }
+  }
+
+  // DELETE USER
+  Future<String> deleteUser({
+    required String userId,
+    required String userType,
+  }) async {
+    var authToken = await storage.read(key: 'token');
+    try {
+      final uri = Uri.parse('$baseUrl/DeleteUser/$userId/$userType');
+
+      final response = await http.delete(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      );
+
+      final responseData = json.decode(response.body);
+
+      switch (response.statusCode) {
+        case 200:
+          return responseData['data']?.toString() ?? 'Delete Successful';
+        case 400:
+          throw BadRequestException(
+            responseData['message']?.toString() ?? 'Invalid request',
+          );
+        case 401:
+          throw UnauthorizedException(
+            responseData['message']?.toString() ?? 'Unauthorized access',
+          );
+        case 500:
+          throw ServerException(
+            responseData['message']?.toString() ?? 'Internal server error',
+          );
+        default:
+          throw Exception('Unexpected status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to delete user: ${e.toString()}');
+    }
+  }
+
+  // ALL APPOINTMENT FOR HOSPITAL
+  Future<List<Appointment>> allAppointment(String hospitalId) async {
+    var authToken = await storage.read(key: 'token');
+    try {
+      final uri = Uri.parse('$baseUrl/AllAppointment/$hospitalId');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      );
+
+      final responseData = json.decode(response.body);
+
+      switch (response.statusCode) {
+        case 200:
+          if (responseData is List) {
+            return responseData.map((json) => Appointment.fromJson(json)).toList();
+          }
+          throw FormatException('Expected array but got ${responseData.runtimeType}');
+        case 404:
+          return [];
+        case 401:
+          throw UnauthorizedException('Unauthorized access');
+        case 500:
+          throw ServerException('Internal server error');
+        default:
+          throw Exception('Unexpected status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch appointments: ${e.toString()}');
+    }
+  }
+
+  // SELECT APPOINTMENT
+  Future<List<Appointment>> selectAppointment({
+    required String hospitalId,
+    required String userId,
+  }) async {
+    var authToken = await storage.read(key: 'token');
+    try {
+      final uri = Uri.parse('$baseUrl/SelectAppointment/$hospitalId/$userId');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      );
+
+      final responseData = json.decode(response.body);
+
+      switch (response.statusCode) {
+        case 200:
+          if (responseData is List) {
+            return responseData.map((json) => Appointment.fromJson(json)).toList();
+          }
+          throw FormatException('Expected array but got ${responseData.runtimeType}');
+        case 404:
+          return [];
+        case 401:
+          throw UnauthorizedException('Unauthorized access');
+        case 500:
+          throw ServerException('Internal server error');
+        default:
+          throw Exception('Unexpected status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch appointment: ${e.toString()}');
+    }
+  }
+
+  // CANCEL APPOINTMENT
+  Future<String> cancelAppointment(String appointmentId) async {
+    var authToken = await storage.read(key: 'token');
+    try {
+      final uri = Uri.parse('$baseUrl/CancelAppointment/$appointmentId');
+
+      final response = await http.delete(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      );
+
+      final responseData = json.decode(response.body);
+
+      switch (response.statusCode) {
+        case 200:
+          return responseData['message']?.toString() ?? 'Cancel Successful';
+        case 400:
+          throw BadRequestException('Invalid appointment ID');
+        case 401:
+          throw UnauthorizedException('Unauthorized access');
+        case 500:
+          throw ServerException('Internal server error');
+        default:
+          throw Exception('Unexpected status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to cancel appointment: ${e.toString()}');
+    }
+  }
+
+  // UPDATE APPOINTMENT STATUS
+  Future<String> updateAppointment({
+    required String appointmentId,
+    required String status,
+  }) async {
+    var authToken = await storage.read(key: 'token');
+    try {
+      final uri = Uri.parse('$baseUrl/UpdateAppointment/$appointmentId/$status');
+
+      final response = await http.put(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      );
+
+      final responseData = json.decode(response.body);
+
+      switch (response.statusCode) {
+        case 200:
+          return responseData['data']?.toString() ?? 'Update Successful';
+        case 400:
+          throw BadRequestException('Invalid request');
+        case 401:
+          throw UnauthorizedException('Unauthorized access');
+        case 500:
+          throw ServerException('Internal server error');
+        default:
+          throw Exception('Unexpected status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to update appointment: ${e.toString()}');
+    }
+  }
+
+  // SUBMIT REVIEW
+  Future<Map<String, dynamic>> submitReview({
+    required String appointmentId,
+    required String reviews,
+    required double ratings,
+  }) async {
+    var authToken = await storage.read(key: 'token');
+    try {
+      final uri = Uri.parse('$baseUrl/SubmitReview/$appointmentId');
+
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: json.encode({
+          'reviews': reviews,
+          'ratings': ratings,
+        }),
+      );
+
+      final responseData = json.decode(response.body);
+
+      switch (response.statusCode) {
+        case 200:
+          return responseData;
+        case 400:
+          throw BadRequestException('Invalid review data');
+        case 401:
+          throw UnauthorizedException('Unauthorized access');
+        case 500:
+          throw ServerException('Internal server error');
+        default:
+          throw Exception('Unexpected status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to submit review: ${e.toString()}');
     }
   }
 }

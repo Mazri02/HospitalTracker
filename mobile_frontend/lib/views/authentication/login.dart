@@ -29,15 +29,15 @@ class _LoginPageState extends State<LoginPage> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DHomeScreen(
-          // userData: response['data'],
-          userData: {},
-        ),
-      ),
-    );
+    // Navigator.pushReplacement(
+    //   context,
+    //   MaterialPageRoute(
+    //     builder: (context) => HomeScreen(
+    //       // userData: response['data'],
+    //       userData: {},
+    //     ),
+    //   ),
+    // );
 
     try {
       // Print the values before making the API call
@@ -58,11 +58,6 @@ class _LoginPageState extends State<LoginPage> {
           context,
         );
       }
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login successful')),
-      );
     } catch (e) {
       // Print the error for debugging
       debugPrint('Login error: $e');

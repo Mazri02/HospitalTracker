@@ -9,6 +9,7 @@ class FieldBox extends StatefulWidget {
   final bool obscureText;
   final TextCapitalization textCapitalization;
   final TextInputType? keyboardType;
+  final IconData? prefixIcon;
 
   const FieldBox({
     Key? key,
@@ -19,6 +20,7 @@ class FieldBox extends StatefulWidget {
     this.obscureText = false,
     this.textCapitalization = TextCapitalization.none,
     this.keyboardType,
+    this.prefixIcon,
   }) : super(key: key);
 
   @override
@@ -52,6 +54,19 @@ class _FieldBoxState extends State<FieldBox> {
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
           ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(
+              color: const Color.fromARGB(255, 150, 53, 220),
+              width: 2,
+            ),
+          ),
+          prefixIcon: widget.prefixIcon != null
+              ? Icon(
+                  widget.prefixIcon,
+                  color: const Color.fromARGB(255, 150, 53, 220),
+                )
+              : null,
           suffixIcon: widget.obscureText
               ? IconButton(
                   icon: Icon(
