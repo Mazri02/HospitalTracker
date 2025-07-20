@@ -34,7 +34,13 @@ class Hospital {
   });
 
   factory Hospital.fromJson(Map<String, dynamic> json) {
-    return Hospital(
+    print('Parsing hospital JSON: $json');
+    print('DoctorName from JSON: ${json['DoctorName']}');
+    print('DoctorID from JSON: ${json['DoctorID']}');
+    print('AssignID from JSON: ${json['AssignID']}');
+    print('All JSON keys: ${json.keys.toList()}');
+    
+    final hospital = Hospital(
       hospitalID: tryParseInt(json['HospitalID']),
       hospitalName: json['HospitalName']?.toString(),
       hospitalLang: tryParseDouble(json['HospitalLang']),
@@ -50,6 +56,12 @@ class Hospital {
       doctorPict: json['DoctorPict'],
       doctorName: json['DoctorName']?.toString(),
     );
+    
+    print('Parsed hospital - DoctorName: ${hospital.doctorName}');
+    print('Parsed hospital - DoctorID: ${hospital.doctorID}');
+    print('Parsed hospital - AssignID: ${hospital.assign}');
+    
+    return hospital;
   }
 
   static int? tryParseInt(dynamic value) {

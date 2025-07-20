@@ -64,7 +64,48 @@ class HospitalController {
     }
 
     public function allHospital() {
-        return Hospital::all();
+        // Simplified approach: Get hospitals first, then add doctor data
+        $hospitals = Hospital::get();
+        $result = [];
+        
+        foreach ($hospitals as $hospital) {
+            // Get the first assigned doctor for this hospital
+            $assignment = Assign::where('HospitalID', $hospital->HospitalID)
+                ->with('doctor')
+                ->first();
+            
+            $hospitalData = $hospital->toArray();
+            
+            if ($assignment && $assignment->doctor) {
+                $hospitalData['AssignID'] = $assignment->AssignID;
+                $hospitalData['DoctorID'] = $assignment->doctor->DoctorID;
+                $hospitalData['DoctorName'] = $assignment->doctor->DoctorName;
+                $hospitalData['DoctorPict'] = $assignment->doctor->DoctorPict;
+                $hospitalData['DoctorEmail'] = $assignment->doctor->DoctorEmail;
+            } else {
+                $hospitalData['AssignID'] = null;
+                $hospitalData['DoctorID'] = null;
+                $hospitalData['DoctorName'] = null;
+                $hospitalData['DoctorPict'] = null;
+                $hospitalData['DoctorEmail'] = null;
+            }
+            
+            // Add appointment counts (simplified)
+            $hospitalData['Total_Appointments'] = 0;
+            $hospitalData['Total_Reviews'] = 0;
+            $hospitalData['Ratings'] = 0;
+            
+            $result[] = $hospitalData;
+        }
+        
+        // Debug: Log the first hospital data
+        if (count($result) > 0) {
+            $firstHospital = $result[0];
+            Log::info('First hospital data:', $firstHospital);
+            Log::info('DoctorName from first hospital: ' . ($firstHospital['DoctorName'] ?? 'NULL'));
+        }
+        
+        return $result;
     }
 
     public function DeleteHospital($id) {
@@ -101,12 +142,21 @@ class HospitalController {
     }
 
     public function selectAppointment($hostid, $id) {
-
+        Log::info("selectAppointment called with hostid: $hostid, userid: $id");
+        
         $ids = is_array($id) ? $id : [$id];
-
+        
+        // Get all assignments for this hospital
         $assignIds = Assign::where("HospitalID", $hostid)->pluck('AssignID');
-        return Appointment::whereIn('AssignID', $assignIds)
+        Log::info("Found assign IDs for hospital $hostid: " . $assignIds->toJson());
+        
+        // Get appointments for this user at this hospital
+        $appointments = Appointment::whereIn('AssignID', $assignIds)
                             ->whereIn('UserID', $ids)
                             ->get();
+        
+        Log::info("Found appointments for user $id at hospital $hostid: " . $appointments->toJson());
+        
+        return $appointments;
     }
 }

@@ -217,10 +217,10 @@ class MapsFormState extends State<MapsForm> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    if (widget.edit == false) {
-      _center = LatLng(widget.hospitalLang!, widget.hospitalLong!);
-      LocationController.text = widget.hospitalAddress!;
-      NameController.text = widget.hospitalName!;
+    if ((widget.edit ?? false) == false) {
+      _center = LatLng(widget.hospitalLang ?? 0, widget.hospitalLong ?? 0);
+      LocationController.text = widget.hospitalAddress ?? '';
+      NameController.text = widget.hospitalName ?? '';
 
       _markers.add(Marker(
         width: 80.0,
@@ -292,7 +292,7 @@ class MapsFormState extends State<MapsForm> {
                       Padding(
                         padding: EdgeInsets.only(top: 10, bottom: 10),
                         child: TextField(
-                          enabled: widget.edit,
+                          enabled: widget.edit ?? false,
                           controller: LocationController,
                           decoration: InputDecoration(
                               suffixIcon: GestureDetector(
@@ -310,7 +310,7 @@ class MapsFormState extends State<MapsForm> {
                         padding: EdgeInsets.only(top: 10, bottom: 10),
                         child: TextField(
                           controller: NameController,
-                          enabled: widget.edit,
+                          enabled: widget.edit ?? false,
                           decoration:
                               InputDecoration(labelText: "Hospital Name"),
                           onChanged: (value) {
@@ -322,7 +322,7 @@ class MapsFormState extends State<MapsForm> {
                           padding: EdgeInsets.only(top: 10, bottom: 10),
                           child: SizedBox(
                             width: double.infinity,
-                            child: widget.edit!
+                            child: (widget.edit ?? false)
                                 ? ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       foregroundColor: Colors.white,

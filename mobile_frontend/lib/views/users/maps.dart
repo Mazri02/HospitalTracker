@@ -52,12 +52,14 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        setState(() {
-          _error = 'Location services are disabled';
-          _isLocationLoading = false;
-          // Fallback to Kuala Lumpur coordinates
-          _currentLocation = LatLng(3.139, 101.6869);
-        });
+        if (mounted) {
+          setState(() {
+            _error = 'Location services are disabled';
+            _isLocationLoading = false;
+            // Fallback to Kuala Lumpur coordinates
+            _currentLocation = LatLng(3.139, 101.6869);
+          });
+        }
         return;
       }
 
@@ -66,23 +68,27 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          setState(() {
-            _error = 'Location permissions are denied';
-            _isLocationLoading = false;
-            // Fallback to Kuala Lumpur coordinates
-            _currentLocation = LatLng(3.139, 101.6869);
-          });
+          if (mounted) {
+            setState(() {
+              _error = 'Location permissions are denied';
+              _isLocationLoading = false;
+              // Fallback to Kuala Lumpur coordinates
+              _currentLocation = LatLng(3.139, 101.6869);
+            });
+          }
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        setState(() {
-          _error = 'Location permissions are permanently denied';
-          _isLocationLoading = false;
-          // Fallback to Kuala Lumpur coordinates
-          _currentLocation = LatLng(3.139, 101.6869);
-        });
+        if (mounted) {
+          setState(() {
+            _error = 'Location permissions are permanently denied';
+            _isLocationLoading = false;
+            // Fallback to Kuala Lumpur coordinates
+            _currentLocation = LatLng(3.139, 101.6869);
+          });
+        }
         return;
       }
 
@@ -92,44 +98,54 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
         timeLimit: const Duration(seconds: 10),
       );
 
-      setState(() {
-        _currentLocation = LatLng(position.latitude, position.longitude);
-        _isLocationLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _currentLocation = LatLng(position.latitude, position.longitude);
+          _isLocationLoading = false;
+        });
+      }
 
       _updateMarkers();
     } catch (e) {
-      setState(() {
-        _error = 'Failed to get current location: ${e.toString()}';
-        _isLocationLoading = false;
-        // Fallback to Kuala Lumpur coordinates
-        _currentLocation = LatLng(3.139, 101.6869);
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to get current location: ${e.toString()}';
+          _isLocationLoading = false;
+          // Fallback to Kuala Lumpur coordinates
+          _currentLocation = LatLng(3.139, 101.6869);
+        });
+      }
       _updateMarkers();
     }
   }
 
   Future<void> _loadHospitals() async {
     try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _error = null;
+        });
+      }
       final apiClient = ApiClient();
       final hospitals = await apiClient.readAllHospital();
 
-      setState(() {
-        _hospitals = hospitals;
-        _filteredHospitals = List.from(hospitals);
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _hospitals = hospitals;
+          _filteredHospitals = List.from(hospitals);
+          _isLoading = false;
+        });
+      }
 
       _updateMarkers();
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -148,57 +164,59 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
           lng <= 180;
     }).toList();
 
-    setState(() {
-      _markers = [
-        // Current location marker
-        Marker(
-          point: _currentLocation!,
-          builder: (BuildContext context) => const Icon(
-            Icons.my_location,
-            color: Colors.blue,
-            size: 30.0,
+    if (mounted) {
+      setState(() {
+        _markers = [
+          // Current location marker
+          Marker(
+            point: _currentLocation!,
+            builder: (BuildContext context) => const Icon(
+              Icons.my_location,
+              color: Colors.blue,
+              size: 30.0,
+            ),
           ),
-        ),
-        // Hospital markers (only valid ones)
-        ...validHospitals
-            .map((hospital) => Marker(
-                  point: LatLng(hospital.hospitalLang!, hospital.hospitalLong!),
-                  builder: (BuildContext context) => GestureDetector(
-                    onTap: () => _showHospitalDetails(hospital),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Transform.scale(
-                          scale: 1.5,
-                          child: const Icon(Icons.location_pin,
-                              color: Colors.red, size: 15.0),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(4),
-                            boxShadow: [
-                              BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 2),
-                            ],
+          // Hospital markers (only valid ones)
+          ...validHospitals
+              .map((hospital) => Marker(
+                    point: LatLng(hospital.hospitalLang!, hospital.hospitalLong!),
+                    builder: (BuildContext context) => GestureDetector(
+                      onTap: () => _showHospitalDetails(hospital),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Transform.scale(
+                            scale: 1.5,
+                            child: const Icon(Icons.location_pin,
+                                color: Colors.red, size: 15.0),
                           ),
-                          child: Text(
-                            hospital.hospitalName ?? 'Unknown',
-                            style: const TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.bold),
-                            overflow: TextOverflow.ellipsis,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4),
+                              boxShadow: [
+                                BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 2),
+                              ],
+                            ),
+                            child: Text(
+                              hospital.hospitalName ?? 'Unknown',
+                              style: const TextStyle(
+                                  fontSize: 10, fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ))
-            .toList(),
-      ];
-    });
+                  ))
+              .toList(),
+        ];
+      });
+    }
   }
 
   void _showHospitalDetails(Hospital hospital) {
@@ -221,21 +239,23 @@ class _HospitalMapsScreenState extends State<HospitalMapsScreen> {
   }
 
   void _searchHospitals(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        _filteredHospitals = List.from(_hospitals);
-      } else {
-        _filteredHospitals = _hospitals
-            .where((hospital) =>
-                hospital.hospitalName!
-                    .toLowerCase()
-                    .contains(query.toLowerCase()) ||
-                hospital.hospitalAddress!
-                    .toLowerCase()
-                    .contains(query.toLowerCase()))
-            .toList();
-      }
-    });
+    if (mounted) {
+      setState(() {
+        if (query.isEmpty) {
+          _filteredHospitals = List.from(_hospitals);
+        } else {
+          _filteredHospitals = _hospitals
+              .where((hospital) =>
+                  hospital.hospitalName!
+                      .toLowerCase()
+                      .contains(query.toLowerCase()) ||
+                  hospital.hospitalAddress!
+                      .toLowerCase()
+                      .contains(query.toLowerCase()))
+              .toList();
+        }
+      });
+    }
     _updateMarkers();
   }
 
@@ -513,6 +533,12 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
   Hospital? _detailedHospital;
   String? _error;
 
+  // Review submission variables
+  final TextEditingController _reviewController = TextEditingController();
+  final _reviewFormKey = GlobalKey<FormState>();
+  int _selectedRating = 0;
+  bool _isSubmittingReview = false;
+
   @override
   void initState() {
     super.initState();
@@ -523,25 +549,30 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
   //Add appointment review method
   Future<void> _loadUserAppointments() async {
     try {
-      setState(() {
-        _loadingAppointments = true;
-        _appointmentsError = null;
-      });
+      if (mounted) {
+        setState(() {
+          _loadingAppointments = true;
+          _appointmentsError = null;
+        });
+      }
 
       final appointments = await ApiClient()
           .readAppointmentsReview(widget.hospital.hospitalID.toString());
 
-      setState(() {
-        // Filter appointments for this hospital only
-        _userAppointments =
-            appointments.where((appt) => appt.reviews != null).toList();
-        _loadingAppointments = false;
-      });
+      if (mounted) {
+        setState(() {
+          // Store ALL appointments for this hospital (not just ones with reviews)
+          _userAppointments = appointments;
+          _loadingAppointments = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _appointmentsError = e.toString();
-        _loadingAppointments = false;
-      });
+      if (mounted) {
+        setState(() {
+          _appointmentsError = e.toString();
+          _loadingAppointments = false;
+        });
+      }
       debugPrint('Error loading appointments: $e');
     }
   }
@@ -549,27 +580,402 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
   // Add method to load detailed hospital data
   Future<void> _loadHospitalDetails() async {
     try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _error = null;
+        });
+      }
 
       final apiClient = ApiClient();
       final detailedHospital = await apiClient.viewHospitalById(
         widget.hospital.hospitalID.toString(),
       );
 
-      setState(() {
-        _detailedHospital = detailedHospital;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _detailedHospital = detailedHospital;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+          // Fallback to the original hospital data if API call fails
+          _detailedHospital = widget.hospital;
+        });
+      }
+    }
+  }
+
+  // Review submission methods
+  void _showReviewDialog() {
+    int tempRating = _selectedRating;
+    final tempController = TextEditingController(text: _reviewController.text);
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.rate_review, color: Colors.blue),
+                SizedBox(width: 8),
+                Text('Submit Review'),
+              ],
+            ),
+            content: Form(
+              key: _reviewFormKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Star Rating Selector
+                  Text(
+                    'Rate your experience:',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return GestureDetector(
+                        onTap: () {
+                          setDialogState(() {
+                            tempRating = index + 1;
+                          });
+                        },
+                        child: Icon(
+                          index < tempRating ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                          size: 32,
+                        ),
+                      );
+                    }),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    tempRating > 0 ? '$tempRating stars' : 'Select rating',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: tempRating > 0 ? Colors.green : Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  
+                  // Review Text Field
+                  TextFormField(
+                    controller: tempController,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      labelText: 'Write your review*',
+                      hintText: 'Share your experience with this hospital...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.edit),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please write a review';
+                      }
+                      if (value.trim().length < 10) {
+                        return 'Review must be at least 10 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _resetReviewForm();
+                },
+                child: Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: (tempRating > 0 && tempController.text.trim().length >= 10) 
+                    ? () async {
+                        // Update the main state
+                        if (mounted) {
+                          setState(() {
+                            _selectedRating = tempRating;
+                            _reviewController.text = tempController.text;
+                          });
+                        }
+                        
+                        // Close dialog and submit
+                        Navigator.pop(context);
+                        await _submitReview();
+                      }
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: (tempRating > 0 && tempController.text.trim().length >= 10) 
+                      ? Colors.blue 
+                      : Colors.grey,
+                  foregroundColor: Colors.white,
+                ),
+                child: _isSubmittingReview
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text('Submit Review'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _resetReviewForm() {
+    _reviewController.clear();
+    _selectedRating = 0;
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  // Helper method to validate review form
+  bool _isReviewFormValid() {
+    return _selectedRating > 0 && 
+           _reviewController.text.trim().length >= 10;
+  }
+
+  // Helper method to check if user has completed appointments
+  bool _hasCompletedAppointments() {
+    debugPrint('Checking for completed appointments in ${_userAppointments.length} appointments:');
+    for (final appointment in _userAppointments) {
+      debugPrint('  Appointment ${appointment.appointmentId}: status = "${appointment.status}"');
+    }
+    
+    final hasCompleted = _userAppointments.any((appointment) {
+      final status = appointment.status?.toLowerCase();
+      debugPrint('  Checking status "$status" for appointment ${appointment.appointmentId}');
+      // Check for various possible status values that indicate completion
+      final isCompleted = status == 'accept' || 
+                         status == 'accepted' || 
+                         status == 'completed' || 
+                         status == 'approved' ||
+                         status == 'confirmed' ||
+                         status == 'done' ||
+                         status == 'finished';
+      debugPrint('  Is completed: $isCompleted');
+      return isCompleted;
+    });
+    
+    debugPrint('Has completed appointments: $hasCompleted');
+    return hasCompleted;
+  }
+
+  Future<void> _submitReview() async {
+    if (!_reviewFormKey.currentState!.validate() || _selectedRating == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select a rating and write a review'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (mounted) {
       setState(() {
-        _error = e.toString();
-        _isLoading = false;
-        // Fallback to the original hospital data if API call fails
-        _detailedHospital = widget.hospital;
+        _isSubmittingReview = true;
       });
+    }
+
+    try {
+      // Get the actual user ID from storage
+      final storage = FlutterSecureStorage();
+      final userId = await storage.read(key: 'userId');
+      
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please login to submit reviews'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        if (mounted) {
+          setState(() {
+            _isSubmittingReview = false;
+          });
+        }
+        return;
+      }
+      
+      // Get the first appointment for this hospital to submit review
+      debugPrint('Looking for appointments for hospital: ${widget.hospital.hospitalID} and user: $userId');
+      
+      final appointments = await ApiClient().selectAppointment(
+        hospitalId: widget.hospital.hospitalID.toString(),
+        userId: userId,
+      );
+
+      debugPrint('Found ${appointments.length} appointments for this hospital');
+      if (appointments.isNotEmpty) {
+        for (int i = 0; i < appointments.length; i++) {
+          debugPrint('Appointment $i: ${appointments[i].toString()}');
+        }
+      }
+
+      if (appointments.isEmpty) {
+        // Show dialog asking user to book appointment first
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('No Appointments Found'),
+            content: Text(
+              'You need to book an appointment with this hospital before you can submit a review. '
+              'Please book an appointment first and then come back to write your review.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+        if (mounted) {
+          setState(() {
+            _isSubmittingReview = false;
+          });
+        }
+        return;
+      }
+
+      // Check if any appointments have valid status for review
+      final validStatuses = ['accept', 'accepted', 'completed', 'approved', 'confirmed', 'done', 'finished'];
+      final hasValidAppointments = appointments.any((appointment) {
+        final status = appointment.status?.toLowerCase();
+        return validStatuses.contains(status);
+      });
+
+      if (!hasValidAppointments) {
+        // Show dialog explaining that only completed appointments can be reviewed
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Appointment Not Ready for Review'),
+            content: Text(
+              'You can only submit reviews for completed appointments. '
+              'Your appointment is still pending or not yet approved. '
+              'Please wait for it to be accepted or completed before submitting a review.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+        if (mounted) {
+          setState(() {
+            _isSubmittingReview = false;
+          });
+        }
+        return;
+      }
+
+      // Find completed appointments (status = "Accepted", "Completed", "Approved", etc.)
+      debugPrint('Checking appointment statuses:');
+      for (final appointment in appointments) {
+        debugPrint('  Appointment ${appointment.appointmentId}: status = "${appointment.status}"');
+      }
+      
+      final completedAppointments = appointments.where((appointment) {
+        final status = appointment.status?.toLowerCase();
+        debugPrint('  Checking status "$status" for appointment ${appointment.appointmentId}');
+        // Check for various possible status values that indicate completion
+        return status == 'accept' || 
+               status == 'accepted' || 
+               status == 'completed' || 
+               status == 'approved' ||
+               status == 'confirmed' ||
+               status == 'done' ||
+               status == 'finished';
+      }).toList();
+
+      debugPrint('Found ${completedAppointments.length} completed appointments');
+
+      if (completedAppointments.isEmpty) {
+        // Show dialog explaining that only completed appointments can be reviewed
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('No Completed Appointments'),
+            content: Text(
+              'You can only submit reviews for completed appointments. '
+              'Your appointment is still pending. Please wait for it to be accepted or completed before submitting a review.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+        if (mounted) {
+          setState(() {
+            _isSubmittingReview = false;
+          });
+        }
+        return;
+      }
+
+      // Use the first completed appointment ID
+      final appointmentId = completedAppointments.first.appointmentId.toString();
+
+      final response = await ApiClient().submitReview(
+        appointmentId: appointmentId,
+        reviews: _reviewController.text.trim(),
+        ratings: _selectedRating.toDouble(),
+      );
+
+      // Close dialog
+      Navigator.pop(context);
+      _resetReviewForm();
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Review submitted successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Reload appointments to show new review
+      await _loadUserAppointments();
+
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmittingReview = false;
+        });
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to submit review: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -944,12 +1350,74 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
 
                           const Divider(height: 24),
 
-                          const Text(
-                            'Patient Review',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Patient Review',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (_userAppointments.isEmpty)
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange[100],
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: Colors.orange[300]!),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.info_outline, size: 16, color: Colors.orange[700]),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Book appointment first',
+                                        style: TextStyle(
+                                          color: Colors.orange[700],
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              else if (_hasCompletedAppointments())
+                                ElevatedButton.icon(
+                                  onPressed: _showReviewDialog,
+                                  icon: Icon(Icons.rate_review, size: 16),
+                                  label: Text('Write Review'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  ),
+                                )
+                              else
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.schedule, size: 16, color: Colors.grey[600]),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Wait for appointment approval',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
                           ),
 
                           _buildAppointmentsSection(),
@@ -980,12 +1448,13 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
                                     alignLabelWithHint: true,
                                     hintText:
                                         'Describe your symptoms or reason for visit...',
+                                    helperText: 'Please provide detailed information (minimum 20 characters)',
                                   ),
                                   validator: (value) {
-                                    if (value == null || value.isEmpty) {
+                                    if (value == null || value.trim().isEmpty) {
                                       return 'Please describe your reason for visit';
                                     }
-                                    if (value.length < 20) {
+                                    if (value.trim().length < 20) {
                                       return 'Please provide more details (at least 20 characters)';
                                     }
                                     return null;
@@ -1043,6 +1512,15 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
                 ],
               ),
             ),
+      floatingActionButton: _isLoading || _userAppointments.isEmpty || !_hasCompletedAppointments()
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _showReviewDialog,
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              icon: Icon(Icons.rate_review),
+              label: Text('Write Review'),
+            ),
       bottomNavigationBar: _isLoading
           ? null
           : BottomAppBar(
@@ -1067,6 +1545,35 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
   void _submitAppointment() async {
     if (_formKey.currentState!.validate()) {
       try {
+        // Check if selected date is not in the past
+        if (selectedDueDate.isBefore(DateTime.now())) {
+          AwesomeDialog(
+            context: context,
+            dialogType: DialogType.error,
+            animType: AnimType.bottomSlide,
+            title: 'Invalid Date',
+            desc: 'Please select a future date for your appointment',
+            btnOkOnPress: () {},
+          ).show();
+          return;
+        }
+
+        // Check if user is authenticated
+        final storage = FlutterSecureStorage();
+        final token = await storage.read(key: 'token');
+        
+        if (token == null) {
+          AwesomeDialog(
+            context: context,
+            dialogType: DialogType.error,
+            animType: AnimType.bottomSlide,
+            title: 'Authentication Required',
+            desc: 'Please login to book appointments',
+            btnOkOnPress: () {},
+          ).show();
+          return;
+        }
+
         // Show loading indicator
         showDialog(
           context: context,
@@ -1077,50 +1584,103 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
 
         // Use detailed hospital data if available, otherwise use the original
         final currentHospital = _detailedHospital ?? widget.hospital;
-        debugPrint('this is ' + currentHospital.assign.toString());
-        debugPrint('this is ' + currentHospital.hospitalID.toString());
+        debugPrint('Hospital ID: ${currentHospital.hospitalID}');
+        debugPrint('Assign ID: ${currentHospital.assign}');
+        debugPrint('Hospital Name: ${currentHospital.hospitalName}');
+        debugPrint('Selected Date: ${selectedDueDate}');
+        debugPrint('Reason: ${_reasonVisitController.text.trim()}');
 
-        // Validate assign ID before booking
+        // Validate hospital and assign data before booking
+        debugPrint('Hospital data validation:');
+        debugPrint('  Hospital ID: ${currentHospital.hospitalID}');
+        debugPrint('  Hospital Name: ${currentHospital.hospitalName}');
+        debugPrint('  Assign ID: ${currentHospital.assign}');
+        debugPrint('  Doctor Name: ${currentHospital.doctorName}');
+        
+        if (currentHospital.hospitalID == null) {
+          throw Exception('Invalid hospital ID. Cannot book appointment.');
+        }
+        
         if (currentHospital.assign == null) {
           throw Exception('No doctor assigned to this hospital. Cannot book appointment.');
         }
+        
+        // Validate that assign ID is a valid number
+        final assignId = currentHospital.assign.toString();
+        if (assignId.isEmpty || assignId == 'null') {
+          throw Exception('Invalid doctor assignment. Cannot book appointment.');
+        }
+
+        // Format date properly for API - ensure it's a valid future date
+        final now = DateTime.now();
+        final selectedDate = selectedDueDate;
+        
+        // Ensure the date is in the future and has a reasonable time
+        final adjustedDate = DateTime(
+          selectedDate.year,
+          selectedDate.month,
+          selectedDate.day,
+          // Set to a reasonable time (e.g., 9 AM) instead of midnight
+          9, // 9 AM
+          0, // 0 minutes
+        );
+        
+        // If the adjusted date is in the past, add one day
+        final finalDate = adjustedDate.isBefore(now) ? adjustedDate.add(Duration(days: 1)) : adjustedDate;
+        
+        final formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(finalDate);
+        
+        debugPrint('Original selected date: $selectedDueDate');
+        debugPrint('Adjusted date: $finalDate');
+        debugPrint('Formatted date for API: $formattedDate');
 
         // Create appointment booking object
         final appointmentBooking = AppointmentBooking(
-          hospitalId: currentHospital.hospitalID.toString(), // Fixed: Use hospitalID instead of doctorID
-          assignId: currentHospital.assign.toString(), // Removed fallback to 'null' string
-          timeAppoint: selectedDueDate.toString(),
-          reasonAppoint: _reasonVisitController.text,
+          hospitalId: currentHospital.hospitalID.toString(),
+          assignId: currentHospital.assign.toString(),
+          timeAppoint: formattedDate,
+          reasonAppoint: _reasonVisitController.text.trim(),
         );
 
         // Call API to book appointment
         final apiClient = ApiClient();
 
-        debugPrint(appointmentBooking.toString());
+        debugPrint('Booking request: ${appointmentBooking.toJson()}');
 
-        final response =
-            await apiClient.bookAppointment(booking: appointmentBooking);
+        final response = await apiClient.bookAppointment(booking: appointmentBooking);
 
         // Close loading dialog
-        if (mounted) Navigator.of(context).pop();
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
 
         // Check response status
         if (response.status == 200) {
           // Success dialog
-          AwesomeDialog(
-            context: context,
-            dialogType: DialogType.success,
-            animType: AnimType.bottomSlide,
-            title: 'Appointment Booked!',
-            desc:
-                'Your appointment at ${currentHospital.hospitalName} has been scheduled for ${DateFormat('MMM dd, yyyy').format(selectedDueDate)}.',
-            btnOkOnPress: () {
-              Navigator.of(context).pop(); // Close hospital detail view
-            },
-          ).show();
+          if (mounted) {
+            AwesomeDialog(
+              context: context,
+              dialogType: DialogType.success,
+              animType: AnimType.bottomSlide,
+              title: 'Appointment Booked!',
+              desc:
+                  'Your appointment at ${currentHospital.hospitalName} has been scheduled for ${DateFormat('MMM dd, yyyy').format(selectedDueDate)}.',
+              btnOkOnPress: () {
+                // Return with success flag to trigger refresh
+                if (mounted) {
+                  Navigator.of(context).pop('booking_success');
+                }
+              },
+            ).show();
+          }
 
           // Clear form
           _reasonVisitController.clear();
+          if (mounted) {
+            setState(() {
+              selectedDueDate = DateTime.now().add(const Duration(days: 1));
+            });
+          }
         } else {
           // Show error from API response
           AwesomeDialog(
@@ -1128,23 +1688,41 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
             dialogType: DialogType.error,
             animType: AnimType.bottomSlide,
             title: 'Booking Failed',
-            desc: response.message,
+            desc: response.message.isNotEmpty ? response.message : 'Unknown error occurred',
             btnOkOnPress: () {},
           ).show();
         }
       } catch (e) {
         // Close loading dialog if still mounted
-        if (mounted) Navigator.of(context).pop();
-        debugPrint('This is response' + e.toString());
-        // Show error dialog
-        AwesomeDialog(
-          context: context,
-          dialogType: DialogType.error,
-          animType: AnimType.bottomSlide,
-          title: 'Booking Failed',
-          desc: 'Failed to book appointment: ${e.toString()}',
-          btnOkOnPress: () {},
-        ).show();
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+        debugPrint('Booking error: ${e.toString()}');
+        
+        // Show error dialog with more specific messages
+        String errorMessage = 'Failed to book appointment';
+        if (e.toString().contains('401')) {
+          errorMessage = 'Please login to book appointments';
+        } else if (e.toString().contains('404')) {
+          errorMessage = 'Hospital or doctor not found';
+        } else if (e.toString().contains('500')) {
+          errorMessage = 'Server error. Please try again later';
+        } else if (e.toString().contains('timeout')) {
+          errorMessage = 'Request timeout. Please check your connection';
+        } else {
+          errorMessage = 'Failed to book appointment: ${e.toString()}';
+        }
+        
+        if (mounted) {
+          AwesomeDialog(
+            context: context,
+            dialogType: DialogType.error,
+            animType: AnimType.bottomSlide,
+            title: 'Booking Failed',
+            desc: errorMessage,
+            btnOkOnPress: () {},
+          ).show();
+        }
       }
     }
   }
@@ -1152,6 +1730,7 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
   @override
   void dispose() {
     _reasonVisitController.dispose();
+    _reviewController.dispose();
     super.dispose();
   }
 
@@ -1162,9 +1741,29 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
 
     if (_appointmentsError != null) {
       return Center(
-        child: Text(
-          'Failed to load appointments: $_appointmentsError',
-          style: const TextStyle(color: Colors.red),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, color: Colors.red, size: 48),
+            SizedBox(height: 8),
+            Text(
+              'No appointments found',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'You need to book an appointment first to write reviews',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       );
     }
@@ -1206,41 +1805,91 @@ class _HospitalDetailViewState extends State<HospitalDetailView> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         const Text(
-          'Your Appointments',
+          'Your Reviews',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 8),
-        ..._userAppointments
-            .map((appointment) => Card(
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (appointment.reviews != null) ...[
-                          const Divider(height: 16),
-                          const Text('Your Review:',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                          Text(appointment.reviews!),
-                          if (appointment.ratings != null)
-                            Row(
-                              children: [
-                                const Icon(Icons.star,
-                                    size: 16, color: Colors.amber),
-                                Text(
-                                    ' ${appointment.ratings!.toStringAsFixed(1)}/5'),
-                              ],
-                            ),
-                        ],
-                      ],
+        if (_userAppointments.isEmpty)
+          Card(
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Icon(Icons.rate_review, size: 48, color: Colors.grey[400]),
+                  SizedBox(height: 8),
+                  Text(
+                    'No reviews yet',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[600],
                     ),
                   ),
-                ))
-            .toList(),
+                  SizedBox(height: 4),
+                  Text(
+                    'Book an appointment and share your experience!',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ..._userAppointments
+              .where((appointment) => appointment.reviews != null)
+              .map((appointment) => Card(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    elevation: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.rate_review, color: Colors.blue, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Your Review',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              Spacer(),
+                              if (appointment.ratings != null)
+                                Row(
+                                  children: [
+                                    Icon(Icons.star, size: 16, color: Colors.amber),
+                                    Text(
+                                      ' ${appointment.ratings!.toStringAsFixed(1)}/5',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.amber[700],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            appointment.reviews!,
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ))
+              .toList(),
       ],
     );
   }
