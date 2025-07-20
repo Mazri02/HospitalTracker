@@ -33,6 +33,11 @@ class Appointment {
       reasonVisit: json['ReasonVisit'] as String,
     );
   }
+
+  @override
+  String toString() {
+    return 'Appointment(id: $appointmentId, userId: $userId, assignId: $assignId, status: "$status", date: $assignDate, reason: "$reasonVisit")';
+  }
 }
 
 class AppointmentBooking {
@@ -51,6 +56,9 @@ class AppointmentBooking {
   Map<String, dynamic> toJson() => {
         'timeAppoint': timeAppoint,
         'reasonAppoint': reasonAppoint,
+        // Add additional fields that might be expected by the API
+        'hospitalId': hospitalId,
+        'assignId': assignId,
       };
 }
 

@@ -13,6 +13,7 @@ import 'package:mobile_frontend/views/users/maps.dart';
 import 'package:mobile_frontend/model/hospital_model.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../controller/service.dart';
 import '../../widget/yes_no_dialog.dart';
 
@@ -42,6 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
   // Current location for hospital details navigation
   LatLng? _currentLocation;
 
+  // Appointment status tracking
+  Map<String, String> _appointmentStatuses = {};
+  bool _isLoadingAppointments = false;
+
   // Carousel images using existing assets
   final List<String> _carouselImages = [
     'assets/images/hospital-logo.png',
@@ -60,6 +65,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _fetchLocation(),
       _loadHospitals(),
     ]);
+
+    // Load appointment statuses after hospitals are loaded
+    await _loadAppointmentStatuses();
   }
 
   Future<void> _loadHospitals() async {
@@ -71,6 +79,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final hospitals = await _apiClient.readAllHospital();
 
+      // Debug: Check if hospitals have doctor data
+      if (hospitals.isNotEmpty) {
+        final firstHospital = hospitals.first;
+        debugPrint('First hospital from API:');
+        debugPrint('  Hospital ID: ${firstHospital.hospitalID}');
+        debugPrint('  Hospital Name: ${firstHospital.hospitalName}');
+        debugPrint('  Doctor Name: ${firstHospital.doctorName}');
+        debugPrint('  Doctor ID: ${firstHospital.doctorID}');
+        debugPrint('  Assign ID: ${firstHospital.assign}');
+      }
+
       setState(() {
         _hospitals = hospitals;
         _isLoadingHospitals = false;
@@ -79,6 +98,83 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _error = e.toString();
         _isLoadingHospitals = false;
+      });
+    }
+  }
+
+  Future<void> _loadAppointmentStatuses() async {
+    if (_hospitals.isEmpty) return;
+
+    setState(() {
+      _isLoadingAppointments = true;
+    });
+
+    try {
+      // Get user ID from secure storage
+      final storage = FlutterSecureStorage();
+      final userId = await storage.read(key: 'userId');
+
+      debugPrint('Loading appointment statuses for user ID: $userId');
+
+      if (userId == null) {
+        debugPrint('No user ID found, skipping appointment status loading');
+        setState(() {
+          _isLoadingAppointments = false;
+        });
+        return;
+      }
+
+      // Also try getting user ID from widget data as fallback
+      final widgetUserId = widget.userData['UserID']?.toString();
+      debugPrint('Widget user ID: $widgetUserId');
+
+      // Use widget user ID if storage user ID is null
+      final finalUserId = userId ?? widgetUserId;
+      if (finalUserId == null) {
+        debugPrint('No user ID available from any source');
+        setState(() {
+          _isLoadingAppointments = false;
+        });
+        return;
+      }
+
+      // Load appointment statuses for each hospital
+      Map<String, String> statuses = {};
+
+      for (final hospital in _hospitals) {
+        try {
+          final appointments = await _apiClient.selectAppointment(
+            hospitalId: hospital.hospitalID.toString(),
+            userId: finalUserId,
+          );
+
+          debugPrint(
+              'Hospital ${hospital.hospitalID}: Found ${appointments.length} appointments');
+
+          if (appointments.isNotEmpty) {
+            // Get the most recent appointment status
+            final latestAppointment = appointments.first;
+            final status = latestAppointment.status;
+            statuses[hospital.hospitalID.toString()] = status;
+            debugPrint('Hospital ${hospital.hospitalID}: Status = ${status}');
+            debugPrint(
+                'Hospital ${hospital.hospitalID}: Full appointment data = ${latestAppointment.toString()}');
+          }
+        } catch (e) {
+          // If there's an error loading appointments for this hospital, skip it
+          debugPrint(
+              'Error loading appointments for hospital ${hospital.hospitalID}: $e');
+        }
+      }
+
+      setState(() {
+        _appointmentStatuses = statuses;
+        _isLoadingAppointments = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading appointment statuses: $e');
+      setState(() {
+        _isLoadingAppointments = false;
       });
     }
   }
@@ -103,40 +199,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showBookingDialog(Hospital hospital) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Book Appointment'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Hospital: ${hospital.hospitalName ?? 'Unknown'}'),
-            Text('Doctor: ${hospital.doctorName ?? 'N/A'}'),
-            Gap(16),
-            Text(
-                'This feature will be available once the backend API is set up properly.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Booking feature coming soon!')),
-              );
-            },
-            child: Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showHospitalDetails(Hospital hospital) {
     if (_currentLocation == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -145,7 +207,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    Navigator.of(context).push(
+    Navigator.of(context)
+        .push(
       MaterialPageRoute(
         builder: (context) => HospitalDetailView(
           hospital: hospital,
@@ -153,7 +216,34 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         fullscreenDialog: true,
       ),
-    );
+    )
+        .then((result) {
+      // Handle return value from hospital details page
+      if (result == 'booking_success') {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Appointment booked successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Immediately update the status for this specific hospital
+        setState(() {
+          _appointmentStatuses[hospital.hospitalID.toString()] = 'pending';
+        });
+
+        debugPrint(
+            'Updated appointment status for hospital ${hospital.hospitalID}: pending');
+
+        // Also refresh all appointment statuses in background with a small delay
+        Future.delayed(Duration(milliseconds: 500), () {
+          if (mounted) {
+            _loadAppointmentStatuses();
+          }
+        });
+      }
+    });
   }
 
   @override
@@ -166,32 +256,65 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           // Main content
           Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Welcome Banner
-                  _buildWelcomeBanner(screenSize),
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await _loadHospitals();
+                await _loadAppointmentStatuses();
+              },
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Welcome Banner
+                    _buildWelcomeBanner(screenSize),
 
-                  Gap(20),
+                    Gap(20),
 
-                  // Carousel for Ads/News
-                  _buildCarousel(),
+                    // Carousel for Ads/News
+                    _buildCarousel(),
 
-                  Gap(20),
+                    Gap(20),
 
-                  // Current Location Section
-                  _buildCurrentLocation(),
+                    // Current Location Section
+                    _buildCurrentLocation(),
 
-                  Gap(20),
+                    Gap(20),
 
-                  // Hospital List
-                  _buildHospitalList(),
+                    // Hospital List
+                    _buildHospitalList(),
 
-                  // Add bottom padding for sticky navigation
-                  Gap(100),
-                ],
+                    // Debug: Force refresh button (remove in production)
+                    if (_isLoadingAppointments)
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Center(
+                          child: Text(
+                            'Loading appointment statuses...',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                      ),
+
+                    // Debug: Force refresh button for testing
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Center(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            debugPrint(
+                                'Force refreshing appointment statuses...');
+                            _loadAppointmentStatuses();
+                          },
+                          child: Text('Refresh Appointment Statuses'),
+                        ),
+                      ),
+                    ),
+
+                    // Add bottom padding for sticky navigation
+                    Gap(100),
+                  ],
+                ),
               ),
             ),
           ),
@@ -463,29 +586,49 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        elevation: 2,
+        borderRadius: BorderRadius.circular(16),
+        elevation: 0,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           onTap: () => _showHospitalDetails(hospital),
           child: Container(
             padding: EdgeInsets.all(16),
             child: Row(
               children: [
                 // Hospital Picture (circular)
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.grey[300],
-                  backgroundImage:
-                      AssetImage('assets/images/hospital-logo.png'),
-                  onBackgroundImageError: (exception, stackTrace) {},
-                  child: hospital.hospitalName != null
-                      ? null
-                      : Icon(Icons.local_hospital, color: Colors.grey[600]),
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        Color.fromARGB(255, 150, 53, 220),
+                        Color.fromARGB(255, 120, 43, 190),
+                      ],
+                    ),
+                  ),
+                  child: CircleAvatar(
+                    radius: 28,
+                    backgroundColor: Colors.transparent,
+                    backgroundImage:
+                        AssetImage('assets/images/hospital-logo.png'),
+                    onBackgroundImageError: (exception, stackTrace) {},
+                    child: hospital.hospitalName != null
+                        ? null
+                        : Icon(Icons.local_hospital,
+                            color: Colors.white, size: 24),
+                  ),
                 ),
 
                 Gap(16),
@@ -495,6 +638,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Hospital Name
                       Text(
                         hospital.hospitalName ?? 'Unknown Hospital',
                         style: TextStyle(
@@ -505,37 +649,52 @@ class _HomeScreenState extends State<HomeScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Gap(4),
+                      Gap(2),
+                      // Doctor Name
                       Text(
                         'Dr. ${hospital.doctorName ?? 'N/A'}',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           color: Colors.blue[700],
                           fontWeight: FontWeight.w500,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Gap(4),
+
+                      Gap(6),
+                      // Address
                       Text(
                         hospital.hospitalAddress ?? 'Address not available',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           color: Colors.grey[600],
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      Gap(4),
+                      // Rating and Reviews
                       if (hospital.ratings != null) ...[
-                        Gap(4),
                         Row(
                           children: [
-                            Icon(Icons.star, color: Colors.amber, size: 16),
+                            Icon(Icons.star, color: Colors.amber, size: 14),
+                            Gap(2),
+                            Text(
+                              '${hospital.ratings!.toStringAsFixed(1)}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                             Gap(4),
                             Text(
-                              '${hospital.ratings!.toStringAsFixed(1)} (${hospital.totalReviews ?? 0} reviews)',
+                              '(${hospital.totalReviews ?? 0} reviews)',
                               style: TextStyle(
-                                  fontSize: 11, color: Colors.grey[600]),
+                                fontSize: 10,
+                                color: Colors.grey[500],
+                              ),
                             ),
                           ],
                         ),
@@ -547,30 +706,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Gap(12),
 
                 // Appointment Button
-                Column(
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => _showBookingDialog(hospital),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            const Color.fromARGB(255, 150, 53, 220),
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: Text(
-                        'BOOK',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                _buildAppointmentButton(hospital),
               ],
             ),
           ),
@@ -623,7 +759,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (context) => ChangeNotifierProvider(
                   create: (context) => NewsController(),
                   lazy: true,
-                  child: const News(),  
+                  child: const News(),
                 ),
               ),
             ),
@@ -674,6 +810,139 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildAppointmentButton(Hospital hospital) {
+    final hospitalId = hospital.hospitalID.toString();
+    final appointmentStatus = _appointmentStatuses[hospitalId];
+
+    debugPrint(
+        'Building button for hospital $hospitalId: status = $appointmentStatus');
+    debugPrint('All appointment statuses: $_appointmentStatuses');
+
+    if (_isLoadingAppointments) {
+      return SizedBox(
+        width: 60,
+        height: 30,
+        child: Center(
+          child: SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (appointmentStatus != null) {
+      // User has an appointment - show status
+      Color buttonColor;
+      String buttonText;
+
+      switch (appointmentStatus.toLowerCase()) {
+        case 'pending':
+        case 'pending':
+          buttonColor = Colors.orange;
+          buttonText = 'PENDING';
+          break;
+        case 'accept':
+        case 'accepted':
+        case 'approved':
+          buttonColor = Colors.green;
+          buttonText = 'ACCEPTED';
+          break;
+        case 'reject':
+        case 'rejected':
+        case 'declined':
+          buttonColor = Colors.red;
+          buttonText = 'REJECTED';
+          break;
+        case 'booked':
+        case 'confirmed':
+          buttonColor = Colors.blue;
+          buttonText = 'BOOKED';
+          break;
+        default:
+          buttonColor = Colors.grey;
+          buttonText = appointmentStatus.toUpperCase();
+          debugPrint('Unknown appointment status: $appointmentStatus');
+      }
+
+      return Container(
+        decoration: BoxDecoration(
+          color: buttonColor,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: buttonColor.withOpacity(0.3),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => _showHospitalDetails(hospital),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                buttonText,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      // No appointment - show book now button
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color.fromARGB(255, 150, 53, 220),
+              Color.fromARGB(255, 120, 43, 190),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Color.fromARGB(255, 150, 53, 220).withOpacity(0.3),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => _showHospitalDetails(hospital),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                'BOOK NOW',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _fetchLocation() async {

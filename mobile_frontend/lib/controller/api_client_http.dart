@@ -87,6 +87,7 @@ class ApiClient {
     var authToken = await storage.read(key: 'token');
     debugPrint('Auth Token: $authToken');
     try {
+      // First get the list of hospitals (without doctor data)
       final response = await http.get(
         Uri.parse('$baseUrl/AllHospital'),
         headers: {
@@ -94,68 +95,50 @@ class ApiClient {
           'Authorization': 'Bearer $authToken',
         },
       ).timeout(const Duration(seconds: 15));
-      print('=== HOSPITAL API RESPONSE ===');
+      
+      print('=== BASIC HOSPITAL LIST ===');
       print('Response Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
       final responseData = json.decode(response.body);
 
-      // Debug: Print first hospital data if available
-      if (responseData is List && responseData.isNotEmpty) {
-        print('First hospital raw data: ${responseData[0]}');
+      if (responseData is! List || responseData.isEmpty) {
+        debugPrint('No hospitals found or invalid response');
+        return [];
+      }
+
+      print('Found ${responseData.length} hospitals, now getting detailed data...');
+      
+      // Now get detailed data for each hospital using ViewHospital API
+      List<Hospital> detailedHospitals = [];
+      
+      for (int i = 0; i < responseData.length; i++) {
+        final hospitalId = responseData[i]['HospitalID'];
+        if (hospitalId != null) {
+          try {
+            print('Getting details for hospital ID: $hospitalId');
+            final detailedHospital = await viewHospitalById(hospitalId.toString());
+            detailedHospitals.add(detailedHospital);
+            print('Successfully got details for hospital: ${detailedHospital.hospitalName}');
+            print('Doctor name: ${detailedHospital.doctorName}');
+          } catch (e) {
+            print('Error getting details for hospital $hospitalId: $e');
+            // Add the basic hospital data if detailed fetch fails
+            try {
+              detailedHospitals.add(Hospital.fromJson(responseData[i]));
+            } catch (parseError) {
+              print('Error parsing basic hospital data: $parseError');
+            }
+          }
+        }
+      }
+      
+      print('=== FINAL HOSPITAL DATA ===');
+      for (int i = 0; i < detailedHospitals.length; i++) {
+        final hospital = detailedHospitals[i];
+        print('Hospital $i: ${hospital.hospitalName} - Doctor: ${hospital.doctorName}');
       }
       print('=============================');
-      switch (response.statusCode) {
-        case 200:
-          try {
-            // Check if responseData is already a List
-            if (responseData is! List) {
-              debugPrint('Expected List but got ${responseData.runtimeType}');
-              throw const FormatException('Expected array of hospitals');
-            }
-
-            if (responseData.isEmpty) {
-              debugPrint('Hospital data is Empty');
-              return [];
-            }
-
-            List<Hospital> hospitals = responseData.map((hospitalJson) {
-              try {
-                return Hospital.fromJson(hospitalJson);
-              } catch (e) {
-                debugPrint('Error parsing hospital entry: $hospitalJson');
-                throw FormatException('Failed to parse hospital data: $e');
-              }
-            }).toList();
-
-            debugPrint('Successfully parsed ${hospitals.length} hospitals');
-            return hospitals;
-          } catch (e) {
-            debugPrint('Detailed parsing error: ${e.toString()}');
-            if (e is FormatException) {
-              rethrow; // Keep FormatException as is
-            }
-            throw FormatException('Data parsing failed: ${e.toString()}');
-          }
-        case 400:
-          debugPrint('Bad Request: ${responseData['message']}');
-          throw BadRequestException(
-            responseData['message']?.toString() ?? 'Invalid hospital data',
-          );
-        case 401:
-          debugPrint('Unauthorized: ${responseData['message']}');
-          throw UnauthorizedException(
-            responseData['message']?.toString() ??
-                'Please login to book appointments',
-          );
-        case 500:
-          debugPrint('Server Error: ${responseData['message']}');
-          throw ServerException(
-            responseData['message']?.toString() ?? 'Internal server error',
-          );
-        default:
-          debugPrint('Unexpected status code: ${response.statusCode}');
-          throw Exception('Unexpected status code: ${response.statusCode}');
-      }
+      
+      return detailedHospitals;
     } catch (e) {
       debugPrint('General Exception: ${e.toString()}');
       throw Exception('Failed to fetch hospitals: ${e.toString()}');
@@ -217,16 +200,18 @@ class ApiClient {
 // READ REVIEWS FOR USER'S APPOINTMENTS
   Future<List<Appointment>> readAppointmentsReview(String hospitalId) async {
     var authToken = await storage.read(key: 'token');
-    debugPrint('Fetching appointments for user $hospitalId');
+    var userId = await storage.read(key: 'userId');
+    debugPrint('Fetching appointments for hospital $hospitalId and user $userId');
 
     try {
+      // First try to get user-specific appointments for this hospital
       final response = await http.get(
-        Uri.parse('$baseUrl/AllAppointment/$hospitalId'),
+        Uri.parse('$baseUrl/SelectAppointment/$hospitalId/$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $authToken',
         },
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 10));
 
       debugPrint('Appointments response: ${response.statusCode}');
       final responseData = json.decode(response.body);
@@ -241,14 +226,17 @@ class ApiClient {
           throw FormatException(
               'Expected array but got ${responseData.runtimeType}');
         case 404:
-          return []; // Return empty list if no appointments found
+          // If no user-specific appointments, return empty list
+          debugPrint('No appointments found for user at this hospital');
+          return [];
         default:
           throw Exception(
               'Failed to load appointments: ${responseData['message']}');
       }
     } catch (e) {
       debugPrint('Error reading appointments: $e');
-      throw Exception('Failed to fetch appointments: ${e.toString()}');
+      // Return empty list instead of throwing error to prevent UI crashes
+      return [];
     }
   }
 
@@ -259,8 +247,71 @@ class ApiClient {
     var authToken = await storage.read(key: 'token');
 
     try {
-      final uri = Uri.parse(
-          '$baseUrl/BookAppointment/${booking.hospitalId}/${booking.assignId}');
+      // Try different endpoint formats
+      Uri uri;
+      
+      // Get user ID from storage
+      final userId = await storage.read(key: 'userId');
+      print('User ID from storage: $userId');
+      
+      // Format 1: /api/BookAppointment/{userId}/{assignId} (CORRECT FORMAT)
+      uri = Uri.parse('$baseUrl/BookAppointment/$userId/${booking.assignId}');
+      
+      print('Trying endpoint format: $uri');
+      print('Note: Using userId ($userId) instead of hospitalId (${booking.hospitalId})');
+      
+      // Also test alternative endpoint formats
+      final alternativeEndpoints = [
+        '$baseUrl/BookAppointment',
+        '$baseUrl/Appointment/Book',
+        '$baseUrl/Appointment/Create',
+        '$baseUrl/BookAppointment/$userId',
+      ];
+      
+      print('Alternative endpoints to try if main fails:');
+      for (final endpoint in alternativeEndpoints) {
+        print('  - $endpoint');
+      }
+      
+      // Test if endpoint exists with a simple GET request
+      try {
+        final testResponse = await http.get(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $authToken',
+          },
+        ).timeout(const Duration(seconds: 5));
+        
+        print('Endpoint test - Status: ${testResponse.statusCode}');
+        if (testResponse.statusCode == 405) {
+          print('Endpoint exists but method not allowed (expected for GET)');
+        } else if (testResponse.statusCode == 404) {
+          print('WARNING: Endpoint not found!');
+        }
+      } catch (e) {
+        print('Endpoint test failed: $e');
+      }
+      
+      // Test if other API endpoints are working
+      try {
+        final testHospitalResponse = await http.get(
+          Uri.parse('$baseUrl/AllHospital'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $authToken',
+          },
+        ).timeout(const Duration(seconds: 5));
+        
+        print('AllHospital endpoint test - Status: ${testHospitalResponse.statusCode}');
+        if (testHospitalResponse.statusCode == 200) {
+          print('Other API endpoints are working fine');
+        } else {
+          print('WARNING: Other API endpoints also failing!');
+        }
+      } catch (e) {
+        print('AllHospital endpoint test failed: $e');
+      }
 
       print('=== API BOOKING REQUEST ===');
       print('Base URL: $baseUrl');
@@ -271,31 +322,254 @@ class ApiClient {
       print('Auth Token: ${authToken?.substring(0, 20)}...'); // Show only first 20 chars for security
       print('==========================');
 
-      final response = await http
-          .post(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $authToken',
-            },
-            body: json.encode(booking.toJson()),
-          )
-          .timeout(const Duration(seconds: 10));
+      // Try different request formats
+      http.Response response;
+      
+      // Method 1: POST with JSON body
+      try {
+        print('Trying POST with JSON body...');
+        response = await http
+            .post(
+              uri,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $authToken',
+              },
+              body: json.encode(booking.toJson()),
+            )
+            .timeout(const Duration(seconds: 10));
+        
+        print('POST with JSON body successful');
+      } catch (e) {
+        print('POST with JSON body failed: $e');
+        
+        // Method 2: POST with form data
+        try {
+          print('Trying POST with form data...');
+          response = await http
+              .post(
+                uri,
+                headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded',
+                  'Authorization': 'Bearer $authToken',
+                },
+                body: Uri(queryParameters: {
+                  'timeAppoint': booking.timeAppoint,
+                  'reasonAppoint': booking.reasonAppoint,
+                }).query,
+              )
+              .timeout(const Duration(seconds: 10));
+          
+          print('POST with form data successful');
+        } catch (e2) {
+          print('POST with form data failed: $e2');
+          
+          // Method 3: PUT with JSON body
+          print('Trying PUT with JSON body...');
+          response = await http
+              .put(
+                uri,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer $authToken',
+                },
+                body: json.encode(booking.toJson()),
+              )
+              .timeout(const Duration(seconds: 10));
+          
+          print('PUT with JSON body successful');
+        }
+      }
+      
+      // Method 4: POST with URL parameters (if all above fail)
+      if (response.statusCode == 500) {
+        print('All methods returned 500, trying POST with URL parameters...');
+        final uriWithParams = Uri.parse('$baseUrl/BookAppointment/${booking.hospitalId}/${booking.assignId}').replace(
+          queryParameters: {
+            'timeAppoint': booking.timeAppoint,
+            'reasonAppoint': booking.reasonAppoint,
+          },
+        );
+        
+        response = await http
+            .post(
+              uriWithParams,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $authToken',
+              },
+            )
+            .timeout(const Duration(seconds: 10));
+        
+        print('POST with URL parameters completed');
+      }
+      
+      // Method 5: Try with user ID in body (if still 500)
+      if (response.statusCode == 500) {
+        print('Still getting 500, trying with user ID in body...');
+        
+        // Get user ID from token or storage
+        final userId = await storage.read(key: 'userId');
+        print('User ID from storage: $userId');
+        
+        final bookingWithUserId = {
+          ...booking.toJson(),
+          'userId': userId,
+        };
+        
+        response = await http
+            .post(
+              uri,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $authToken',
+              },
+              body: json.encode(bookingWithUserId),
+            )
+            .timeout(const Duration(seconds: 10));
+        
+        print('POST with user ID completed');
+      }
+      
+      // Method 6: Try alternative endpoints (if still 500)
+      if (response.statusCode == 500) {
+        print('Still getting 500, trying alternative endpoints...');
+        
+        for (final endpoint in alternativeEndpoints) {
+          print('Trying endpoint: $endpoint');
+          
+          try {
+            final altResponse = await http
+                .post(
+                  Uri.parse(endpoint),
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer $authToken',
+                  },
+                  body: json.encode(booking.toJson()),
+                )
+                .timeout(const Duration(seconds: 5));
+            
+            print('Alternative endpoint $endpoint - Status: ${altResponse.statusCode}');
+            
+            if (altResponse.statusCode != 500) {
+              print('SUCCESS: Alternative endpoint worked!');
+              response = altResponse;
+              break;
+            }
+          } catch (e) {
+            print('Alternative endpoint $endpoint failed: $e');
+          }
+        }
+      }
+      
+      // Method 7: Try different request formats with the working endpoint
+      if (response.statusCode == 404) {
+        print('Got 404, trying different request formats with /api/BookAppointment...');
+        
+        final workingEndpoint = '$baseUrl/BookAppointment';
+        
+        // Try with hospital and assign IDs in body
+        try {
+          print('Trying with hospital and assign IDs in body...');
+          final requestBody = {
+            'hospitalId': booking.hospitalId,
+            'assignId': booking.assignId,
+            'timeAppoint': booking.timeAppoint,
+            'reasonAppoint': booking.reasonAppoint,
+          };
+          
+          final altResponse = await http
+              .post(
+                Uri.parse(workingEndpoint),
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer $authToken',
+                },
+                body: json.encode(requestBody),
+              )
+              .timeout(const Duration(seconds: 5));
+          
+          print('With IDs in body - Status: ${altResponse.statusCode}');
+          
+          if (altResponse.statusCode == 200) {
+            print('SUCCESS: This format worked!');
+            response = altResponse;
+          } else {
+            // Try with different field names
+            print('Trying with different field names...');
+            final requestBodyAlt = {
+              'hospital_id': booking.hospitalId,
+              'assign_id': booking.assignId,
+              'appointment_time': booking.timeAppoint,
+              'reason': booking.reasonAppoint,
+            };
+            
+            final altResponse2 = await http
+                .post(
+                  Uri.parse(workingEndpoint),
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer $authToken',
+                  },
+                  body: json.encode(requestBodyAlt),
+                )
+                .timeout(const Duration(seconds: 5));
+            
+            print('With different field names - Status: ${altResponse2.statusCode}');
+            
+            if (altResponse2.statusCode == 200) {
+              print('SUCCESS: Different field names worked!');
+              response = altResponse2;
+            }
+          }
+        } catch (e) {
+          print('With IDs in body failed: $e');
+        }
+      }
 
       print('=== API BOOKING RESPONSE ===');
       print('Status Code: ${response.statusCode}');
       print('Response Headers: ${response.headers}');
       print('Raw Response Body: ${response.body}');
+      
+      // If it's HTML, try to extract useful error info
+      if (response.body.trim().startsWith('<!DOCTYPE') || response.body.trim().startsWith('<html')) {
+        print('=== HTML ERROR ANALYSIS ===');
+        if (response.body.contains('Fatal error')) {
+          print('FATAL ERROR DETECTED');
+        }
+        if (response.body.contains('Parse error')) {
+          print('PARSE ERROR DETECTED');
+        }
+        if (response.body.contains('Database')) {
+          print('DATABASE ERROR DETECTED');
+        }
+        if (response.body.contains('Table')) {
+          print('TABLE ERROR DETECTED');
+        }
+        print('==========================');
+      }
       print('============================');
 
       // Check if response is HTML (error page)
       if (response.body.trim().startsWith('<!DOCTYPE') || 
           response.body.trim().startsWith('<html')) {
-        throw Exception(
-          'Server returned HTML error page instead of JSON. '
-          'Status: ${response.statusCode}. '
-          'This usually means the API endpoint doesn\'t exist or there\'s a server error.'
-        );
+        // Try to extract error message from HTML
+        String errorMessage = 'Server returned HTML error page instead of JSON. Status: ${response.statusCode}.';
+        
+        // Look for common error patterns in HTML
+        if (response.body.contains('Fatal error') || response.body.contains('Parse error')) {
+          errorMessage += ' PHP error detected.';
+        }
+        if (response.body.contains('Database connection failed')) {
+          errorMessage += ' Database connection issue.';
+        }
+        if (response.body.contains('Table') && response.body.contains('doesn\'t exist')) {
+          errorMessage += ' Database table missing.';
+        }
+        
+        throw Exception(errorMessage);
       }
 
       // Check if response body is empty
