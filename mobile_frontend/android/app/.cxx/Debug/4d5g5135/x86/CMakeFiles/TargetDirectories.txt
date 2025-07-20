@@ -1,0 +1,2 @@
+E:/UNIVERSITI (DEGREE)/SUBJEK/SEM 5/ICT602/GROUP PROJECT/HospitalTracker/mobile_frontend/android/app/.cxx/Debug/4d5g5135/x86/CMakeFiles/edit_cache.dir
+E:/UNIVERSITI (DEGREE)/SUBJEK/SEM 5/ICT602/GROUP PROJECT/HospitalTracker/mobile_frontend/android/app/.cxx/Debug/4d5g5135/x86/CMakeFiles/rebuild_cache.dir

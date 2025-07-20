@@ -7,10 +7,12 @@ import 'package:mobile_frontend/controller/api_client_http.dart';
 import 'package:mobile_frontend/services/api_service.dart';
 import 'package:mobile_frontend/utils/navigator.dart';
 import 'package:mobile_frontend/views/about/about.dart';
+import 'package:mobile_frontend/views/users/news.dart';
 import 'package:mobile_frontend/views/users/profile.dart';
 import 'package:mobile_frontend/views/users/maps.dart';
 import 'package:mobile_frontend/model/hospital_model.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:provider/provider.dart';
 import '../../controller/service.dart';
 import '../../widget/yes_no_dialog.dart';
 
@@ -611,6 +613,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 });
               }
             },
+          ),
+          _buildNavItem(
+            icon: Icons.newspaper,
+            label: 'News',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChangeNotifierProvider(
+                  create: (context) => NewsController(),
+                  lazy: true,
+                  child: const News(),  
+                ),
+              ),
+            ),
           ),
           _buildNavItem(
             icon: Icons.map,
